@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Hungerspiele Simulation</title>
+    <link rel="icon" type="icon" href="always same/Icon.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Hungerspiele Simulation<br>-inoffizielles Fanprojekt-</h1>
+
+    <div id="heal-menu" style="display:none;"></div>
+    <div id="game-container">
+        <canvas id="arena" width="500" height="500"></canvas>
+        <div id="controls">
+            <div class="pre-Game">
+                <button onclick="startSimulation()">Start Simulation</button>
+                <button onclick="generateArena()">Arena zufällig generieren</button>
+                <input type="text" id="arena-seed" placeholder="Seed (optional)" style="width:110px;">
+                <label>
+                    Anzahl Tribute:
+                    <input type="number" min="5" max="48" value="24" id="tribute-count">
+                </label>
+                <button onclick="saveProfiles()">Speichern</button>
+            </div>
+
+            <div class="mid-game">
+                <div id="live-count">
+                    Verbleibende Tribute: <span id="live-count-number">-</span>
+                </div>
+                <button onclick="pauseSimulation()">Pause/Fortsetzen</button>
+                <button onclick="stopSimulation()">Endspiel</button>
+                <label>
+                    Geschwindigkeit:
+                    <input type="range" min="1" max="10" value="5" id="speed" />
+                </label>
+                <button onclick="spawnAnimal()">Wildtier loslassen</button>
+                <button onclick="showHealMenu()">Tribut Heilung senden</button>
+            </div>
+
+            <div class="arena-editor">
+                <select id="draw-mode">
+                    <option value="grass">Wiese</option>
+                    <option value="water">Wasser</option>
+                    <option value="lava">Lava</option>
+                    <option value="forest">Wald</option>
+                    <option value="rock">Felsen</option>
+                    <option value="trap">Falle</option>
+                </select>
+                <label>
+                    Pinselgröße:
+                    <input type="range" min="1" max="5" value="1" id="brush-size">
+                </label>
+            </div>
+
+            <div class="exitmode">
+                <button onclick="location.reload(true)">Nochmal!</button>
+            </div>
+            <button id="show-profiles-btn" onclick="toggleProfiles()">Profile anzeigen/ausblenden</button>
+        </div>
+    </div>
+
+    <section id="profiles-section">
+        <div id="profiles-container"> </div> <!-- per js geregelt -->
+    </section>
+    <!---- Log-Filterleiste ---->
+    <div id="log-filter-bar">
+        <button class="log-filter-btn active" data-type="all">Alle</button>
+        <button class="log-filter-btn" data-type="attack">Angriffe</button>
+        <button class="log-filter-btn" data-type="death">Tode</button>
+        <button class="log-filter-btn" data-type="info">Info</button>
+    </div>
+    <div id="log"></div>
+
+    <div id="code-input">
+        <input type="text" id="load-code" placeholder="Arena- oder Tributen-Code eingeben">
+        <button onclick="loadFromCode()">eingegebenen Code Laden</button>
+        <button onclick="showArenaCode()">Arena-Code anzeigen</button>
+        <button onclick="showTributesCode()">Tributen-Code anzeigen</button>
+    </div>
+
+
+    <section id="miniminiklein">
+        <h2>Dein Bildschirm ist zu winzig!</h2>
+        <p>Die Simulation wurde für größere (Breiter als 1000 Pixel und höher als 450 Pixel) Bildschirme ausgelegt. <br>Probiere es doch mal mit Querformat oder einem größeren Gerät<br>an einer responsiven Version wird gearbeitet. </p>
+    </section>
+
+    <footer>
+        <p class="inspiration">
+            <strong>Inspiration:</strong>
+            Dieses Projekt ist inspiriert von der <em>"Die Tribute von Panem"</em>-Reihe von Suzanne Collins.
+            <br>Es handelt sich um ein unabhängiges, inoffizielles Fanprojekt, das die Idee der Hungerspiele auf eigene
+            Weise simuliert.
+        </p>
+        <a href="Disclaimer.html">Disclaimer</a>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

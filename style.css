@@ -1,0 +1,544 @@
+/* Farbvariablen */
+:root {
+    --black: #000;
+    --white: #fff;
+    /* Hauptfarben */
+    --main-bg: linear-gradient(135deg, #24251d 0%, #0a1318 100%);
+    --main-gold: #FDE872;
+    --main-gold-dark: #9F6F28;
+    --main-dark: #020405;
+    --main-dark2: #13140F;
+
+    /* Zweitfarben */
+    --secondary-bg: rgba(8, 7, 5, 0.822);
+    --secondary-bg2: rgb(0, 0, 0);
+    --secondary-gold-light: #F9EA7E;
+    --secondary-gold-bg: #322D27;
+
+    /* Schriftfarben */
+    --text-main: #FCE784;
+    --text-gold: #DAB211;
+    --text-dark: #070707;
+
+    /* Schattenfarben */
+    --shadow-strong: #000c;
+    --shadow-medium: #13140F;
+    --shadow-light: #322D27;
+    --shadow-gold: #9F6F28;
+
+    /* Kontrastfarben */
+    --contrast-green: #3e8e41;
+    --contrast-blue: #1e88e5;
+    --contrast-red: #e60000;
+    --contrast-forest: #245c2a;
+    --contrast-rock: #6d6d6d;
+    --contrast-trap: #552c11;
+    --contrast-animal: #d18067;
+
+    /* Sonstige */
+    --scrollbar-thumb: #F8D76E;
+    --scrollbar-bg: #29231B;
+
+    /* Log-Nachrichtfarben */
+    --log-attack: #e3b505;
+    --log-death: #d32f2f;
+    --log-info: #1e88e5;
+    --log-win: #43a047;
+    --log-filter-bg: #23231c;
+    --log-filter-active: #d4af37;
+    --log-filter-inactive: #444;
+}
+
+/* Allgemeine Stile */
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--main-bg);
+    color: var(--text-main);
+    min-height: 100vh;
+}
+
+h1 {
+    color: var(--main-gold);
+    text-shadow: 2px 2px 8px var(--shadow-light), 0 0 10px var(--main-gold-dark);
+    letter-spacing: 2px;
+    margin-top: 30px;
+    margin-bottom: 10px;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    background: var(--secondary-bg);
+    border-radius: 18px;
+    box-shadow: 0 0 24px var(--shadow-strong), 0 0 0 2px var(--main-gold);
+    padding: 18px 28px 18px 28px;
+}
+
+canvas {
+    border: 3px solid var(--main-gold);
+    background: var(--main-bg);
+    cursor: crosshair;
+    box-shadow: 0 0 18px var(--shadow-strong);
+    margin-bottom: 10px;
+}
+
+#controls {
+    margin-top: 16px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--secondary-bg2);
+    border-radius: 16px;
+    padding: 16px 32px;
+    box-shadow: none;
+}
+
+/* zwingt die Sektionen, je eine eigene Zeile einzunehmen */
+#controls>.pre-Game,
+#controls>.mid-game,
+#controls>.arena-editor {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+button,
+select,
+input[type="range"],
+input[type="number"],
+input[type="text"] {
+    padding: 8px 16px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 2px solid var(--main-gold);
+    background: var(--main-dark);
+    color: var(--main-gold);
+    transition: background 0.15s, color 0.15s, border 0.15s;
+    outline: none;
+    box-shadow: none;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+button:hover,
+input[type="range"]:hover,
+input[type="number"]:hover,
+input[type="text"]:hover,
+select:hover {
+    background: var(--main-gold);
+    color: var(--black) !important;
+    border-color: var(--main-gold-dark);
+    box-shadow: none;
+    text-shadow: none;
+}
+
+#controls,
+#controls label,
+#controls button,
+#controls select,
+#controls input[type="range"],
+#controls input[type="number"],
+#controls input[type="text"] {
+    color: var(--main-gold);
+    text-shadow: none;
+    font-weight: 500;
+}
+
+input[type="color"] {
+    border: 2px solid var(--main-gold);
+    background: var(--main-dark);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin-left: 8px;
+    border-radius: 8px;
+}
+
+#live-count {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--main-gold);
+    margin-bottom: 8px;
+    text-decoration: underline;
+}
+
+#profiles-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    margin-top: 32px;
+    max-width: 1024px;
+    justify-content: center;
+}
+
+.tribute-profile {
+    border: 2px solid var(--main-gold);
+    border-radius: 16px;
+    padding: 24px 16px;
+    background: linear-gradient(120deg, var(--main-dark) 60%, var(--secondary-gold-bg) 100%);
+    width: 272px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 1;
+    box-shadow: none;
+    transition: opacity 0.3s, border-color 0.2s;
+}
+
+.tribute-profile.dead {
+    opacity: 0.45;
+    filter: grayscale(0.7) blur(0.5px);
+    border-color: #888;
+}
+
+.tribute-profile h3 {
+    margin: 0 0 16px;
+    color: var(--main-gold);
+    text-shadow: none;
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.tribute-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.tribute-info label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-main);
+    font-size: 1em;
+    font-weight: 500;
+}
+
+.tribute-info input[type="checkbox"] {
+    accent-color: var(--main-gold);
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+#log {
+    margin-top: 32px;
+    max-width: 528px;
+    height: 160px;
+    overflow-y: scroll;
+    background: var(--secondary-bg);
+    border: 2px solid var(--main-gold);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 14px;
+    color: var(--main-gold);
+    box-shadow: none;
+    position: relative;
+    min-height: 160px;
+}
+
+#log .log-attack,
+#log .log-death,
+#log .log-info,
+#log .log-win {
+    text-shadow: none;
+}
+
+#log .log-attack {
+    color: var(--log-attack);
+    font-weight: bold;
+}
+
+#log .log-death {
+    color: var(--log-death);
+    font-weight: bold;
+}
+
+#log .log-info {
+    color: var(--log-info);
+}
+
+#log .log-win {
+    color: var(--log-win);
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+#log-filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    justify-content: flex-end;
+    background: var(--log-filter-bg);
+    border-radius: 8px 8px 0 0;
+    padding: 8px 16px;
+}
+
+.log-filter-btn {
+    background: var(--log-filter-inactive);
+    color: var(--main-gold);
+    border: 2px solid var(--main-gold-dark);
+    border-radius: 8px;
+    padding: 4px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s, border 0.15s;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+#log-filter-bar .log-filter-btn {
+    color: var(--main-gold);
+    text-shadow: none;
+}
+
+.log-filter-btn.active {
+    background: var(--log-filter-active);
+    color: var(--black);
+    border-color: var(--main-gold);
+    font-weight: bold;
+}
+
+#code-input {
+    margin-top: 32px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+}
+
+#code-input input[type="text"] {
+    width: 320px;
+    background: var(--main-dark);
+    color: var(--main-gold);
+    border: 2px solid var(--main-gold);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 16px;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    background: var(--scrollbar-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 8px;
+}
+
+input[type="range"] {
+    accent-color: var(--main-gold);
+    background: transparent;
+    height: 8px;
+    border-radius: 8px;
+}
+
+select {
+    background: var(--main-dark);
+    color: var(--main-gold);
+    border: 2px solid var(--main-gold);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 16px;
+}
+
+label {
+    color: var(--main-gold);
+    font-weight: 500;
+}
+
+/* Statistik-Tabelle: Name weiß umrandet */
+#stats-table td:first-child {
+    /* Name-Spalte */
+    text-shadow:
+        0 0 2px #fff,
+        0 0 1px #fff,
+        1px 1px 0 #fff,
+        -1px -1px 0 #fff;
+    /* Die eigentliche Schriftfarbe wird inline per JS gesetzt (tribute.color) */
+}
+
+#heal-menu {
+    position: fixed;
+    top: 128px;
+    left: 32px;
+    min-width: 224px;
+    max-width: 264px;
+    max-height: 72vh;
+    background: var(--secondary-bg);
+    border: 2px solid var(--main-gold);
+    border-radius: 12px;
+    box-shadow: none;
+    padding: 20px 16px 16px 16px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--main-gold);
+    font-size: 1em;
+    overflow-y: auto;
+}
+
+#heal-menu h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: var(--main-gold);
+    text-align: left;
+    font-size: 1.1em;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.heal-tribute-btn {
+    width: 100%;
+    margin-bottom: 8px;
+    background: var(--main-gold);
+    color: var(--main-dark);
+    border: 2px solid var(--main-gold-dark);
+    border-radius: 8px;
+    padding: 8px 0;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border 0.15s;
+    box-shadow: none;
+}
+
+.heal-tribute-btn:disabled {
+    background: #888;
+    color: #222;
+    cursor: not-allowed;
+    opacity: 0.7;
+    text-decoration: line-through;
+    border-color: #888;
+}
+
+.heal-tribute-btn:hover,
+.heal-tribute-btn:focus {
+    background: var(--main-gold-dark);
+    color: var(--black);
+    border-color: var(--main-gold);
+}
+
+#heal-menu .heal-close-btn {
+    background: var(--main-dark2);
+    color: var(--text-gold);
+    border: 2px solid var(--main-gold);
+    border-radius: 8px;
+    padding: 8px 0;
+    font-size: 1em;
+    font-weight: bold;
+    margin-top: 8px;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background 0.15s, color 0.15s, border 0.15s;
+}
+
+#heal-menu .heal-close-btn:hover,
+#heal-menu .heal-close-btn:focus {
+    background: var(--main-gold-dark);
+    color: var(--black);
+    border-color: var(--main-gold);
+}
+
+#load-code:hover {
+    color: var(--main-gold) !important;
+}
+
+/* Footer Styles */
+footer {
+    margin-top: 40px;
+    padding: 24px;
+    text-align: center;
+    border-top: 2px solid var(--main-gold);
+    width: 100%;
+    max-width: 1024px;
+    box-sizing: border-box;
+}
+
+footer .inspiration {
+    color: var(--text-main);
+    font-size: 0.9em;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+footer .inspiration strong {
+    color: var(--main-gold);
+}
+
+footer .inspiration em {
+    color: var(--secondary-gold-light);
+}
+
+footer a {
+    color: var(--main-gold);
+    text-decoration: none;
+    padding: 8px 16px;
+}
+
+footer a:hover {
+    color: var(--main-gold-dark);
+}
+
+/*für zu kleine Bildschirme*/
+
+#miniminiklein {
+    display: none;  /* Standardmäßig ausgeblendet */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: var(--secondary-bg);
+    z-index: 9999;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    text-align: center;
+    border: 4px solid var(--main-gold);
+    box-sizing: border-box;
+}
+
+#miniminiklein h2 {
+    color: var(--main-gold);
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 8px var(--shadow-light);
+}
+
+#miniminiklein p {
+    color: var(--text-main);
+    line-height: 1.6;
+    max-width: 80%;
+}
+
+/* Responsive Anpassungen */
+@media screen and ((max-width: 1000px) or (max-height: 450px)) {
+    #game-container,
+    #profiles-section,
+    #log-filter-bar,
+    #log,
+    #code-input,
+    footer {
+        display: none !important;
+    }
+
+    #miniminiklein {
+        display: flex;
+    }
+}
