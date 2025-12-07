@@ -293,6 +293,16 @@ class Tribute {
             // --- Waffen-Logik je nach Verhalten ---
             const nearestWeapon = this.findNearestWeapon();
             const enemyNearby = this.isEnemyNearby();
+            const nearbyAnimal = this.findNearbyAnimal(viewDistance);
+            if (nearbyAnimal) {
+                // Wildtier in Sichtweite: Flucht! (für alle Verhaltenstypen)
+                this.moveAwayFrom(nearbyAnimal.x, nearbyAnimal.y);
+                // Optional: Log für ängstliche Tribute
+                if (this.behavior === 'ängstlich') {
+                    logInfo(`${this.name} flieht vor einem Wildtier!`);
+                }
+                return; // Wichtig: Rückzug beendet den Move-Tick
+            }
 
             if (this.behavior === 'aggressiv' && nearestWeapon) {
                 this.moveTowards(nearestWeapon.x, nearestWeapon.y);
@@ -675,7 +685,7 @@ class Tribute {
         if (Math.random() >= 8) {
             this.moveTowards(middleofarena.x, middleofarena.y)
         }
-        
+
         // Normale persistente Bewegung
         let newX = this.x + (this.walkDirection === 0 ? 1 : this.walkDirection === 1 ? -1 : 0);
         let newY = this.y + (this.walkDirection === 2 ? 1 : this.walkDirection === 3 ? -1 : 0);
@@ -1108,6 +1118,25 @@ class Tribute {
         return nearest;
     }
 
+    // Neue Methode: Finde nahes Wildtier
+    findNearbyAnimal(viewDistance = MAX_VIEW_DISTANCE) {
+        let minDist = Infinity;
+        let nearestAnimal = null;
+
+        for (const animal of animals) {
+            if (!animal.alive) continue;
+
+            const dist = Math.abs(this.x - animal.x) + Math.abs(this.y - animal.y);
+
+            // Nur Tiere in Sichtweite
+            if (dist <= viewDistance && dist < minDist) {
+                minDist = dist;
+                nearestAnimal = animal;
+            }
+        }
+        return nearestAnimal;
+    }
+
     isEnemyNearby() {
         // Ein anderer lebender Tribut im Umkreis von 3 Feldern
         return tributes.some(t =>
@@ -1123,7 +1152,7 @@ class Animal {
         this.x = randomInt(0, WIDTH - 1);
         this.y = randomInt(0, HEIGHT - 1);
         this.alive = true;
-        this.health = 40; // Weniger Leben als Tribute
+        this.health = 60; // Weniger Leben als Tribute
         this.direction = randomInt(0, 3);
         this.speed = 2; // Tiere sind schneller
     }
