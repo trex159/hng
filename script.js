@@ -21,9 +21,12 @@ let lavashouldstart = false;
 
 let showprofilelist = true;
 
-let lastmsg = "";
-let secondlastmsg = "";
-let thirtlastmsg = "";
+let lastmsg;
+let secondlastmsg;
+let thirtlastmsg;
+let fourthlastmsg;
+let fifthlastmsg;
+let sixtlastmsg;
 
 const MAX_VIEW_DISTANCE = 5;
 const LAVA_SPEED = 0.4;
@@ -231,6 +234,7 @@ class Tribute {
         this.damageDealt = 0;
         this.damageTaken = 0;
         this.distanceMoved = 0;
+        this.walkDirection = null;      // Persistente Richtung für randomWalk
         this.kills = 0;
         this.lastAttacker = null;
         this.weapon = null; // {power}
@@ -321,22 +325,45 @@ class Tribute {
                 switch (this.behavior) {
                     case 'aggressiv':
                         target = this.findNearestEnemy();
-                        if (target) {
+                        if (target && this.isFriend(target)) {
+                            target = null;
+                        }
+                        if (target && this.getDistance(target) < 6 && ((this.health >= target.health + 5 && this.attributes.schlau) || (this.health >= target.health - 10 && !this.attributes.schlau) || Math.random() >= 0.9) || (this.attributes.stark && this.health >= 15)) {
                             this.moveTowards(target.x, target.y);
+                        } else if (target) {
+                            this.moveAwayFrom(target.x, target.y);
+                        } else if (lavaStart) {
+                            this.moveTowards(middleofarena.x, middleofarena.y)
+                        } else if (this.health >= 45) {
+                            this.moveTowards(middleofarena.x, middleofarena.y)
                         } else {
-                            this.randomWalk();
+                            this.randomWalk()
                         }
                         break;
                     case 'defensiv':
                         target = this.findNearestEnemy();
-                        if (target && this.getDistance(target) < 5) {
+                        if (target && this.isFriend(target)) {
+                            target = null;
+                        }
+                        if (target && this.getDistance(target) < 5 && ((this.health >= target.health + 10 && this.attributes.schlau) || (this.health >= target.health && !this.attributes.schlau) || Math.random() >= 0.91)) {
+                            this.moveTowards(target.x, target.y);
+                        } else if (lavaStart) {
+                            this.moveTowards(middleofarena.x, middleofarena.y)
+                        } else if (target) {
                             this.moveAwayFrom(target.x, target.y);
                         } else {
-                            this.randomWalk();
+                            this.moveAwayFrom(middleofarena.x, middleofarena.y)
                         }
                         break;
                     case 'ängstlich':
-                        this.hide();
+                        if (lavaStart) {
+                            this.moveTowards(middleofarena.x, middleofarena.y)
+                        }
+                        if (Math.random() >= 5) {
+                            this.hide();
+                        } else {
+                            this.moveAwayFrom(middleofarena.x, middleofarena.y)
+                        }
                         break;
                 }
                 if (!target && this.behavior !== 'ängstlich') this.randomWalk();
@@ -597,8 +624,10 @@ class Tribute {
     }
 
     randomWalk() {
-        if (Math.random() > 0.8) {
-            this.direction = randomInt(0, 3);
+        // geringe chance auf richtungswechsel
+        const nearEdge = this.x < 3 || this.x >= WIDTH - 3 || this.y < 3 || this.y >= HEIGHT - 3;
+        if (!this.walkDirection || Math.random() < 0.04 || nearEdge) {
+            this.walkDirection = randomInt(0, 3);
         }
 
         // Soziale Einflüsse: wenn in der Nähe ein Feind mit hoher Hostility ist, gezielt auf ihn zugehen
@@ -613,22 +642,26 @@ class Tribute {
                 break;
             }
             if (fear > 0.6 && trust < 0.4) {
-                // flüchten vor demjenigen
+                // flüchten vor demjenigen - aber danach weiterlaufen in Fluchtrichtung
                 this.moveAwayFrom(t.x, t.y);
+                this.walkDirection = null;  // Reset um neue Fluchtrichtung zu finden
                 return;
             }
         }
         if (specialTarget) {
             this.moveTowards(specialTarget.x, specialTarget.y);
+            this.walkDirection = null;  // Zielgerichtete Bewegung, dann zurück zu randomWalk
             return;
         }
 
         if (lavaStart) {
             this.moveTowards(0, 0);
+            return;
         }
 
-        let newX = this.x + (this.direction === 0 ? 1 : this.direction === 1 ? -1 : 0);
-        let newY = this.y + (this.direction === 2 ? 1 : this.direction === 3 ? -1 : 0);
+        // Normale persistente Bewegung
+        let newX = this.x + (this.walkDirection === 0 ? 1 : this.walkDirection === 1 ? -1 : 0);
+        let newY = this.y + (this.walkDirection === 2 ? 1 : this.walkDirection === 3 ? -1 : 0);
 
         newX = Math.max(0, Math.min(WIDTH - 1, newX));
         newY = Math.max(0, Math.min(HEIGHT - 1, newY));
@@ -638,28 +671,61 @@ class Tribute {
     }
 
     moveTowards(targetX, targetY) {
+        // Zielkoordinaten normalisieren (falls Objekt übergeben wird)
+        if (typeof targetX === 'object' && targetX !== null) {
+            targetY = targetX.y;
+            targetX = targetX.x;
+        }
+
         let dx = targetX - this.x;
         let dy = targetY - this.y;
 
+        let newX = this.x;
+        let newY = this.y;
+
         if (Math.abs(dx) > Math.abs(dy)) {
-            this.x += Math.sign(dx);
+            newX += Math.sign(dx);
         } else {
-            this.y += Math.sign(dy);
+            newY += Math.sign(dy);
         }
+
+        // Grenzen beachten
+        newX = Math.max(0, Math.min(WIDTH - 1, newX));
+        newY = Math.max(0, Math.min(HEIGHT - 1, newY));
+
+        this.x = newX;
+        this.y = newY;
     }
 
     moveAwayFrom(targetX, targetY) {
+        const nearEdge = this.x < 2 || this.x >= WIDTH - 2 || this.y < 2 || this.y >= HEIGHT - 2;
+        if (nearEdge && !lavaStart) {
+            this.randomWalk();
+        }
+        // Zielkoordinaten normalisieren (falls Objekt übergeben wird)
+        if (typeof targetX === 'object' && targetX !== null) {
+            targetY = targetX.y;
+            targetX = targetX.x;
+        }
+
         let dx = this.x - targetX;
         let dy = this.y - targetY;
 
-        // auf weltgerenzen achten
-
+        let newX = this.x;
+        let newY = this.y;
 
         if (Math.abs(dx) > Math.abs(dy)) {
-            this.x += Math.sign(dx);
+            newX += Math.sign(dx);
         } else {
-            this.y += Math.sign(dy);
+            newY += Math.sign(dy);
         }
+
+        // Grenzen beachten
+        newX = Math.max(0, Math.min(WIDTH - 1, newX));
+        newY = Math.max(0, Math.min(HEIGHT - 1, newY));
+
+        this.x = newX;
+        this.y = newY;
     }
 
     hide() {
@@ -671,7 +737,7 @@ class Tribute {
             this.x = tile.x;
             this.y = tile.y;
         } else {
-            this.randomWalk();
+            this.moveAwayFrom(middleofarena.x, middleofarena.y);
         }
     }
 
@@ -726,7 +792,7 @@ class Tribute {
             attacker.alive &&
             !this.isFriend(attacker) // Nicht auf eigene Freunde losgehen
         ) {
-            logInfo(`${this.name} verteidigt ${opponent.name} und greift stattdessen ${attacker.name} an!`);
+            logInfo(`${this.name} verteidigt ${opponent.name} und greift ${attacker.name} an!`);
             this.fight(attacker);
         }
     }
@@ -864,17 +930,27 @@ class Tribute {
 
     calculateAttackPower(opponent) {
         let attackPower = randomInt(5, 20);
+        const aliveCount = tributes.filter(t => t.alive).length;
 
         if (this.attributes.stark) attackPower += 5;
         if (this.attributes.schlau) attackPower += 1;
 
+        let Waffenvorteil = 0
+
         // Waffen-Bonus
         if (this.weapon) {
-            attackPower += this.weapon.power;
+            Waffenvorteil += this.weapon.power;
         }
         if (this.weakWeapons && this.weakWeapons.length > 0) {
             // Addiere alle schwachen Waffen
-            for (const w of this.weakWeapons) attackPower += w.power;
+            for (const w of this.weakWeapons) Waffenvorteil += w.power;
+        }
+
+        // Schlaue wissen besser die Waffen anzuwenden
+        if (this.attributes.schlau) {
+            attackPower += Waffenvorteil * 1.2
+        } else {
+            attackPower += Waffenvorteil
         }
 
         if (this.gender === 'männlich' && opponent.gender === 'weiblich' && opponent.health + 20 < this.health && !this.aggressive) {
@@ -891,9 +967,52 @@ class Tribute {
             attackPower += 5;
         }
 
+        //Angst vor Killern
+        if (opponent.kills >= 4 && this.kills < 3 && opponent.health >= this.health + 15) {
+            //Angst macht stärker
+            attackPower += 3;
+            //Trotzdem gibt es einen Fluchtversuch
+            this.moveAwayFrom(opponent.x, opponent.y);
+            if (this.ängstlich) {
+                this.social.fear[opponent.id] += 0.8;
+            } else {
+                this.social.fear[opponent.id] += 0.5;
+            }
+
+        }
+
+        //Nicht selbst zum Killer werden wollen
+        if (aliveCount >= 5 && !this.aggressive && Math.random() >= 0.8 && this.health > (opponent.health * 1.2)) {
+            logInfo(`${this.name} versucht ${opponent.name} aus dem Weg zu gehen.`)
+            return 0;
+        }
+
+        // verletzte machen weniger schaden
+        if (opponent.health >= this.health && this.health < 75) {
+            let verhältniss = opponent.health / this.health;
+            let weakness = attackPower * verhältniss;
+            // zwischen 5 und 15 begrenzen
+            weakness = Math.min(Math.max(weakness, 5), 15);
+            attackPower -= weakness;
+        }
+
+        // dauerhafte Angst kann stärken aber auch zu größeren Nachteilen führen
+        if (this.ängstlich || this.social.fear[opponent.id] >= 0.8) {
+            if (Math.random() >= 0.5) {
+                attackPower = attackPower * 0.9;
+            } else {
+                attackPower += 3;
+            }
+        }
+
+        // aggressivität kann zu Fehlern führen
+        if (this.aggressive && !this.attributes.schlau && Math.random() >= 0.657) {
+            attackPower -= 4;
+        }
+
         let altersunterschied = Math.abs(this.age - opponent.age);
         let ageadd = 0;
-        if (altersunterschied > 3 || this.age < 14 && altersunterschied > 1) { // nur bei großem Altersunterschied, oder jungen Tribut gegen älteren
+        if (altersunterschied > 3 || (this.age < 14 && altersunterschied > 1)) { // nur bei großem Altersunterschied, oder jungen Tribut gegen älteren
             if (this.age > opponent.age) {
                 ageadd += altersunterschied * 8.1;
             } else if (this.age < opponent.age) {
@@ -1753,25 +1872,54 @@ function logDeath(msg) {
 
 }
 function logInfo(msg) {
-    //1er oder zweiermuster verhindern
-    if (lastmsg === msg) {
-        return;
-    }
-    if (secondlastmsg === msg && thirtlastmsg === lastmsg) {
-        return;
-    }
+
+    // 1er Muster
+    if (lastmsg === msg) return;
+
+    // 2er Muster
+    if (secondlastmsg === msg && thirtlastmsg === lastmsg) return;
+
+    // 3er Muster
+    if (thirtlastmsg === msg && fourthlastmsg === lastmsg && secondlastmsg === thirtlastmsg) return;
+
+    // 4er Muster
+    if (fourthlastmsg === msg
+        && fifthlastmsg === lastmsg
+        && thirtlastmsg === fourthlastmsg
+        && secondlastmsg === thirtlastmsg) return;
+
+    // 5er Muster
+    if (fifthlastmsg === msg
+        && sixtlastmsg === lastmsg
+        && fourthlastmsg === fifthlastmsg
+        && thirtlastmsg === fourthlastmsg
+        && secondlastmsg === thirtlastmsg) return;
+
+    // 6er Muster
+    if (sixtlastmsg === msg
+        && fifthlastmsg === sixtlastmsg
+        && fourthlastmsg === fifthlastmsg
+        && thirtlastmsg === fourthlastmsg
+        && secondlastmsg === thirtlastmsg
+        && lastmsg === secondlastmsg) return;
+
     logEvent(msg, "info");
-    updatelstmsg(msg)
+    updatelstmsg(msg);
 }
+
 function logWin(msg) {
     logEvent(msg, "win");
     updatelstmsg(msg)
 }
 function updatelstmsg(msg) {
+    sixtlastmsg = fifthlastmsg;
+    fifthlastmsg = fourthlastmsg;
+    fourthlastmsg = thirtlastmsg;
     thirtlastmsg = secondlastmsg;
     secondlastmsg = lastmsg;
     lastmsg = msg;
 }
+
 
 // --- NEU: Wiesen verbinden und abrunden ---
 function connectMeadowAreas() {
