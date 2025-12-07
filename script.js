@@ -698,10 +698,6 @@ class Tribute {
     }
 
     moveAwayFrom(targetX, targetY) {
-        const nearEdge = this.x < 2 || this.x >= WIDTH - 2 || this.y < 2 || this.y >= HEIGHT - 2;
-        if (nearEdge && !lavaStart) {
-            this.randomWalk();
-        }
         // Zielkoordinaten normalisieren (falls Objekt übergeben wird)
         if (typeof targetX === 'object' && targetX !== null) {
             targetY = targetX.y;
@@ -713,6 +709,15 @@ class Tribute {
 
         let newX = this.x;
         let newY = this.y;
+
+        // Prüfe, ob am Rand: wenn ja, ändere Strategie
+        const atEdge = this.x < 2 || this.x >= WIDTH - 2 || this.y < 2 || this.y >= HEIGHT - 2;
+
+        if (atEdge) {
+            // Am Rand: Laufe zur Mitte statt weg vom Feind
+            dx = middleofarena.x - this.x;
+            dy = middleofarena.y - this.y;
+        }
 
         if (Math.abs(dx) > Math.abs(dy)) {
             newX += Math.sign(dx);
@@ -727,7 +732,7 @@ class Tribute {
         this.x = newX;
         this.y = newY;
     }
-
+    
     hide() {
         let surroundings = this.getSurroundings();
         let forestTiles = surroundings.filter(tile => tile.type === 'forest');
