@@ -352,17 +352,25 @@ class Tribute {
                         } else if (target) {
                             this.moveAwayFrom(target.x, target.y);
                         } else {
-                            this.moveAwayFrom(middleofarena.x, middleofarena.y)
+                            if (Math.random() >= 0.5) {
+                                this.moveAwayFrom(middleofarena.x, middleofarena.y)
+                            } else {
+                                this.randomWalk()
+                            }
                         }
                         break;
                     case 'ängstlich':
                         if (lavaStart) {
                             this.moveTowards(middleofarena.x, middleofarena.y)
                         }
-                        if (Math.random() >= 5) {
+                        if (Math.random() >= 0.5) {
                             this.hide();
                         } else {
-                            this.moveAwayFrom(middleofarena.x, middleofarena.y)
+                            if (Math.random() >= 0.5) {
+                                this.moveAwayFrom(middleofarena.x, middleofarena.y)
+                            } else {
+                                this.randomWalk()
+                            }
                         }
                         break;
                 }
@@ -732,7 +740,7 @@ class Tribute {
         this.x = newX;
         this.y = newY;
     }
-    
+
     hide() {
         let surroundings = this.getSurroundings();
         let forestTiles = surroundings.filter(tile => tile.type === 'forest');
