@@ -28,7 +28,7 @@ let fourthlastmsg;
 let fifthlastmsg;
 let sixtlastmsg;
 
-const MAX_VIEW_DISTANCE = 5;
+const MAX_VIEW_DISTANCE = 25;
 const LAVA_SPEED = 0.4;
 
 // Hilfsfunktion: sichtbar/nicht sichtbar schalten je nach State
@@ -265,8 +265,8 @@ class Tribute {
         // Sichtweite je nach Terrain
         let viewDistance = MAX_VIEW_DISTANCE;
         const tile = this.getCurrentTile();
-        if (tile === 'forest') viewDistance = 2;
-        else if (tile === 'rock') viewDistance = 7;
+        if (tile === 'forest') viewDistance = MAX_VIEW_DISTANCE * 0.6;
+        else if (tile === 'rock') viewDistance = MAX_VIEW_DISTANCE * 1.4;
         // (Wasser: Sichtweite bleibt gleich, aber Bewegung wird langsamer)
 
         // --- Neue Priorität: Lava-Check zuerst ---
@@ -324,11 +324,14 @@ class Tribute {
             } else {
                 switch (this.behavior) {
                     case 'aggressiv':
+                        if (Math.random() >= 0.91) {
+                            this.randomWalk()
+                        }
                         target = this.findNearestEnemy();
                         if (target && this.isFriend(target)) {
                             target = null;
                         }
-                        if (target && this.getDistance(target) < 6 && ((this.health >= target.health + 5 && this.attributes.schlau) || (this.health >= target.health - 10 && !this.attributes.schlau) || Math.random() >= 0.9) || (this.attributes.stark && this.health >= 15)) {
+                        if (target && this.getDistance(target) < 6 && ((this.health >= target.health + 5 && this.attributes.schlau) || (this.health >= target.health - 10 && !this.attributes.schlau) || (this.attributes.stark && this.health >= 15) || Math.random() >= 0.9)) {
                             this.moveTowards(target.x, target.y);
                         } else if (target) {
                             this.moveAwayFrom(target.x, target.y);
@@ -341,25 +344,27 @@ class Tribute {
                         }
                         break;
                     case 'defensiv':
+                        if (Math.random() >= 0.91) {
+                            this.randomWalk()
+                        }
                         target = this.findNearestEnemy();
                         if (target && this.isFriend(target)) {
                             target = null;
                         }
                         if (target && this.getDistance(target) < 5 && ((this.health >= target.health + 10 && this.attributes.schlau) || (this.health >= target.health && !this.attributes.schlau) || Math.random() >= 0.91)) {
                             this.moveTowards(target.x, target.y);
-                        } else if (lavaStart) {
-                            this.moveTowards(middleofarena.x, middleofarena.y)
                         } else if (target) {
                             this.moveAwayFrom(target.x, target.y);
+                        } else if (lavaStart) {
+                            this.moveTowards(middleofarena.x, middleofarena.y)
                         } else {
-                            if (Math.random() >= 0.5) {
-                                this.moveAwayFrom(middleofarena.x, middleofarena.y)
-                            } else {
-                                this.randomWalk()
-                            }
+                            this.moveAwayFrom(middleofarena.x, middleofarena.y)
                         }
                         break;
                     case 'ängstlich':
+                        if (Math.random() >= 0.91) {
+                            this.randomWalk()
+                        }
                         if (lavaStart) {
                             this.moveTowards(middleofarena.x, middleofarena.y)
                         }
@@ -667,6 +672,10 @@ class Tribute {
             return;
         }
 
+        if (Math.random() >= 8) {
+            this.moveTowards(middleofarena.x, middleofarena.y)
+        }
+        
         // Normale persistente Bewegung
         let newX = this.x + (this.walkDirection === 0 ? 1 : this.walkDirection === 1 ? -1 : 0);
         let newY = this.y + (this.walkDirection === 2 ? 1 : this.walkDirection === 3 ? -1 : 0);
@@ -755,11 +764,27 @@ class Tribute {
     }
 
     findNearestEnemy() {
+        // Sichtweite je nach aktuellem Terrain
+        let viewDistance = MAX_VIEW_DISTANCE;
+        const tile = this.getCurrentTile();
+        if (tile === 'forest') viewDistance = MAX_VIEW_DISTANCE * 0.6;
+        else if (tile === 'rock') viewDistance = MAX_VIEW_DISTANCE * 1.4;
+
+        // schlaue Tribute können Spuren lesen
+        if (this.attributes.schlau) {
+            viewDistance += 30
+        }
+
         let bestScore = Infinity;
         let nearestEnemy = null;
         for (const t of tributes) {
             if (!t.alive || t === this || this.isFriend(t)) continue;
+
             const dist = Math.abs(this.x - t.x) + Math.abs(this.y - t.y);
+
+            // Sichtweite beachten - wenn zu weit weg, ignorieren
+            if (dist > viewDistance) continue;
+
             const hostility = this.social.hostility[t.id] || 0;
             const fear = this.social.fear[t.id] || 0;
             const trust = this.social.trust[t.id] || 0;
@@ -840,7 +865,8 @@ class Tribute {
         // Freund eines Freundes: tolerieren, solange gemeinsamer Freund in der Nähe und mehr als 2 leben und nicht nur Freunde übrig
         if (
             !onlyFriendsLeft &&
-            this.isFriendOfFriend(opponent) && aliveCount > 2
+            this.isFriendOfFriend(opponent) && aliveCount > 2 &&
+            Math.random() >= 0.5
         ) {
             logInfo(`${this.name} toleriert ${opponent.name} wegen gemeinsamer Freundschaft.`);
             return;
