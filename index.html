@@ -9,8 +9,11 @@
 </head>
 
 <body>
+    <div id="loader">
+        <div class="loader-spinner"></div>
+        <p>Lade Simulation</p>
+    </div>
     <h1>Hungerspiele Simulation<br>-inoffizielles Fanprojekt-</h1>
-
     <div id="heal-menu" style="display:none;"></div>
     <div id="game-container">
         <canvas id="arena" width="500" height="500"></canvas>
@@ -19,27 +22,37 @@
                 <button onclick="startSimulation()">Start Simulation</button>
                 <button onclick="generateArena()">Arena zufällig generieren</button>
                 <input type="text" id="arena-seed" placeholder="Seed (optional)" style="width:110px;">
-                <label>
-                    Anzahl Tribute:
-                    <input type="number" min="5" max="48" value="24" id="tribute-count">
+                <label> Anzahl Tribute: <input type="number" min="5" max="48" value="24" id="tribute-count">
                 </label>
                 <button onclick="saveProfiles()">Speichern</button>
             </div>
-
             <div class="mid-game">
-                <div id="live-count">
-                    Verbleibende Tribute: <span id="live-count-number">-</span>
+                <div id="game-clock"> Spielzeit: <span id="game-clock-value">Zeitpunkt 0</span>
+                </div>
+                <div id="live-count"> Verbleibende Tribute: <span id="live-count-number">-</span>
                 </div>
                 <button onclick="pauseSimulation()">Pause/Fortsetzen</button>
                 <button onclick="stopSimulation()">Endspiel</button>
-                <label>
-                    Geschwindigkeit:
-                    <input type="range" min="1" max="10" value="5" id="speed" />
+                <button id="endgame-pause-btn" onclick="toggleEndgamePause()">Endspiel pausieren</button>
+                <label> Geschwindigkeit: <input type="range" min="1" max="30" value="5" id="speed" />
+                </label>
+                <button onclick="showHealMenu()">Tribut Heilung senden</button>
+                <label>Wetter: <select onchange="setWeather(this.value)">
+                        <option value="clear">Gutes Wetter</option>
+                        <option value="fog">Nebel</option>
+                        <option value="rain">Regen</option>
+                        <option value="snow">Schnee</option>
+                    </select>
                 </label>
                 <button onclick="spawnAnimal()">Wildtier loslassen</button>
-                <button onclick="showHealMenu()">Tribut Heilung senden</button>
+                <label>Tier-Leben: <input type="number" id="animal-hp" min="1" max="500" value="60" style="width:60px;">
+                </label>
+                <label>Tier-Schaden: <input type="number" id="animal-dmg-min" min="0" max="100" value="5"
+                        style="width:50px;"> bis
+                    <input type="number" id="animal-dmg-max" min="0" max="100" value="20" style="width:50px;">
+                </label>
+                <label><input type="checkbox" id="animal-pick"> Position per Klick wählen</label>
             </div>
-
             <div class="arena-editor">
                 <select id="draw-mode">
                     <option value="grass">Wiese</option>
@@ -49,19 +62,15 @@
                     <option value="rock">Felsen</option>
                     <option value="trap">Falle</option>
                 </select>
-                <label>
-                    Pinselgröße:
-                    <input type="range" min="1" max="5" value="1" id="brush-size">
+                <label> Pinselgröße: <input type="range" min="1" max="20" value="5" id="brush-size">
                 </label>
             </div>
-
             <div class="exitmode">
                 <button onclick="location.reload(true)">Nochmal!</button>
             </div>
             <button id="show-profiles-btn" onclick="toggleProfiles()">Profile anzeigen/ausblenden</button>
         </div>
     </div>
-
     <section id="profiles-section">
         <div id="profiles-container"> </div> <!-- per js geregelt -->
     </section>
@@ -73,38 +82,44 @@
         <button class="log-filter-btn" data-type="info">Info</button>
     </div>
     <div id="log"></div>
-
     <div id="code-input">
         <input type="text" id="load-code" placeholder="Arena- oder Tributen-Code eingeben">
         <button onclick="loadFromCode()">eingegebenen Code Laden</button>
         <button onclick="showArenaCode()">Arena-Code anzeigen</button>
         <button onclick="showTributesCode()">Tributen-Code anzeigen</button>
     </div>
-
-
     <section id="miniminiklein">
         <h2>Dein Bildschirm ist zu winzig!</h2>
         <p>Die Simulation wurde für größere (Breiter als 1000 Pixel und höher als 450 Pixel) Bildschirme ausgelegt.
             <br>Probiere es doch mal mit Querformat oder einem größeren Gerät<br>an einer responsiven Version wird
-            gearbeitet. </p>
+            gearbeitet.
+        </p>
     </section>
-
     <footer>
-        <p>Aktuelle Version HNG 10.1</p>
+        <p>Aktuelle Version HNG 11</p>
         <p class="inspiration">
-            <strong>Inspiration:</strong>
-            Dieses Projekt ist inspiriert von der <em>"Die Tribute von Panem"</em>-Reihe von Suzanne Collins.
-            <br>Es handelt sich um ein unabhängiges, inoffizielles Fanprojekt, das die Idee der Hungerspiele auf eigene
-            Weise simuliert.
+            <strong>Inspiration:</strong> Dieses Projekt ist inspiriert von der <em>"Die Tribute von Panem"</em>-Reihe
+            von Suzanne Collins. <br>Es handelt sich um ein unabhängiges, inoffizielles Fanprojekt, das die Idee der
+            Hungerspiele auf eigene Weise simuliert.
         </p>
         <a href="Disclaimer.html">Zum Disclaimer</a>
-        <p class="small muted">
-            © 2025 / 2026 — Hungerspiele Simulation (Fanprojekt).
-            Code und Design: eigenständig entwickelt. Keine Verbindung zu offiziellen Rechteinhabern.
-            <br> Lizenz: CC BY-NC 4.0 · Nutzung auf eigene Verantwortung.
-        </p>
+        <p class="small muted"> © 2025 / 2026 — Hungerspiele Simulation (Fanprojekt). Code und Design: eigenständig
+            entwickelt. Keine Verbindung zu offiziellen Rechteinhabern. <br> Lizenz: CC BY-NC 4.0 · Nutzung auf eigene
+            Verantwortung. </p>
     </footer>
-
+    <script src="script_events.js"></script>
+    <script src="script_logic.js"></script>
+    <script src="script_time.js"></script>
+    <script src="script_weather.js"></script>
+    <script src="script_social.js"></script>
+    <script src="script_search.js"></script>
+    <script src="script_layout.js"></script>
+    <script src="script_render.js"></script>
+    <script src="script_fx.js"></script>
+    <script src="script_stats.js"></script>
+    <script src="script_stats_ui.js"></script>
+    <script src="script_fullscreen.js"></script>
+    <script src="script_arena.js"></script>
     <script src="script.js"></script>
 </body>
 
