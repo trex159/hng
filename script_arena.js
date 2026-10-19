@@ -488,6 +488,25 @@ function generateArena() {
         let cy = arenaRandInt(HEIGHT * 0.2, HEIGHT * 0.8);
         paintBlob(cx, cy, radius(2, 5), arenaSeed + 4000 + i * 111, 2, 0.7, -0.2, 'grass');
     }
+
+    // 3.5 Spawn-Zone garantieren: Im Zentrum ist immer Wiese
+    const spawnCenterX = Math.floor(WIDTH / 2);
+    const spawnCenterY = Math.floor(HEIGHT / 2);
+    const spawnRadius = 24; // Radius der Spawn-Zone
+
+    for (let dy = -spawnRadius; dy <= spawnRadius; dy++) {
+        for (let dx = -spawnRadius; dx <= spawnRadius; dx++) {
+            // Kreisförmige Spawn-Zone
+            if (dx * dx + dy * dy > spawnRadius * spawnRadius) continue;
+
+            const x = spawnCenterX + dx;
+            const y = spawnCenterY + dy;
+
+            if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+                grid[y][x] = 'grass';
+            }
+        }
+    }
     // 4. Fluss (nach Wald, überschreibt Wald/Wiese, umfährt das Zentrum)
     generateRiver();
 

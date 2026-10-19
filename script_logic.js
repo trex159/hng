@@ -44,11 +44,11 @@ const NAMES_LAST = [
     'Kingsley', 'Larkspur', 'Meadowell', 'Mossford', 'Oakley',
     'Pinehurst', 'Ravenshaw', 'Redfern', 'Rosewell', 'Thornfield',
     'Whitaker', 'Willoughby', 'Winterton', 'Woodruff', 'Sarcoline',
-    'Graycott', 'Iverson', 'Snowden', 'Silverton', 'Goldrick',
+    'Graycott', 'Iverson', 'Spinus', 'Silverton', 'Goldrick',
     'Blanchett', 'Scarletton', 'Amberley', 'Russet', 'Sableton',
     'Umberly', 'Corbett', 'Flintwood', 'Bramble', 'Marshwick',
     'Bellweather', 'Holling', 'Westmere', 'Eastonby', 'Ashcombe',
-    'Bexley', 'Creston', 'Dallow', 'Everden', 'Fallow',
+    'Bexley', 'Creston', 'Dallow', 'Haozung', 'Fallow',
     'Glenwick', 'Harbury', 'Kestrel', 'Marlowe', 'Thistledown',
     'Minestone', 'Brokeman', 'Phlox', 'Falu', 'Watchet', 'Damask',
     'Wenge', 'Sinoper', 'Amaranth', 'Puce', 'Smalt', 'Titian', 
@@ -604,7 +604,7 @@ class Tribute {
         return false;
     }
     helpFriend(opponent) {
-        logInfo(`${this.name} passt und greift ${opponent.name} nicht an.`);
+        //logInfo(`${this.name} passt und greift ${opponent.name} nicht an.`);
         // Falls der Freund (opponent) gerade angegriffen wird, greife dessen Angreifer an
         const attacker = opponent.lastAttacker;
         if (attacker && attacker !== this && attacker.alive && !this.isFriend(attacker) // Nicht auf eigene Freunde losgehen
@@ -627,7 +627,7 @@ class Tribute {
         // Freunde greifen sich nicht an, solange mehr als 2 Tribute leben und nicht nur Freunde übrig
         const aliveCount = aliveTributes.length;
         if (!onlyFriendsLeft && this.isFriend(opponent) && aliveCount > 2) {
-            logInfo(`${this.name} weigert sich, Freund ${opponent.name} anzugreifen.`);
+            //logInfo(`${this.name} weigert sich, Freund ${opponent.name} anzugreifen.`);
             this.helpFriend(opponent);
             return;
         }
@@ -639,7 +639,7 @@ class Tribute {
         // 1️⃣ Vertrauen prüfen: hohes Vertrauen verhindert Angriff (soziale Bindung)
         const trustLevel = this.social.trust[opponent.id] || 0;
         if (trustLevel > 0.7 && aliveCount > 3 && !onlyFriendsLeft) {
-            logInfo(`${this.name} weigert sich, Freund ${opponent.name} anzugreifen.`);
+            //logInfo(`${this.name} weigert sich, Freund ${opponent.name} anzugreifen.`);
             this.helpFriend(opponent);
             return;
         }
