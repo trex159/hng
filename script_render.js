@@ -423,6 +423,54 @@ const Renderer = (() => {
         };
     }
 
+    // Rundfigur eines Tributs: Schatten, Körper, Augen, Waffe. Mittelpunkt (cx, cy), Radius r.
+    // facing: Blickrichtung {dx, dy}; Standard ist die letzte Bewegung (im Stand schauen die Augen nach unten).
+    function drawFigure(c, cx, cy, r, t, lineWidth, facing = headingOf(t)) {
+        // Schatten
+        c.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        c.beginPath();
+        c.ellipse(cx, cy + r * 0.85, r * 0.95, r * 0.38, 0, 0, Math.PI * 2);
+        c.fill();
+        // Körper
+        const body = c.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r * 1.05);
+        body.addColorStop(0, shade(t.color, 0.45));
+        body.addColorStop(0.6, t.color);
+        body.addColorStop(1, shade(t.color, -0.35));
+        c.beginPath();
+        c.arc(cx, cy, r, 0, Math.PI * 2);
+        c.fillStyle = body;
+        c.fill();
+        c.lineWidth = lineWidth;
+        c.strokeStyle = 'rgba(15, 5, 20, 0.9)';
+        c.stroke();
+        // Augen in Blickrichtung (im Stand schauen sie nach unten)
+        let hx = facing.dx,
+            hy = facing.dy;
+        if (!hx && !hy) hy = 1;
+        const hl = Math.hypot(hx, hy);
+        hx /= hl;
+        hy /= hl;
+        const ox = hx * r * 0.32,
+            oy = hy * r * 0.32;
+        const sx = -hy * r * 0.3,
+            sy = hx * r * 0.3;
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(cx + ox - sx, cy + oy - sy, r * 0.17, 0, Math.PI * 2);
+        c.arc(cx + ox + sx, cy + oy + sy, r * 0.17, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#10051a';
+        c.beginPath();
+        c.arc(cx + ox * 1.3 - sx, cy + oy * 1.3 - sy, r * 0.08, 0, Math.PI * 2);
+        c.arc(cx + ox * 1.3 + sx, cy + oy * 1.3 + sy, r * 0.08, 0, Math.PI * 2);
+        c.fill();
+        // Waffe
+        if (t.weapon) {
+            c.fillStyle = '#c9fdff';
+            c.fillRect(cx + r * 0.7, cy - r * 0.15, r * 0.5, r * 0.3);
+        }
+    }
+
     function drawWeapons(c, v, time) {
         weapons.forEach(w => {
             const sx = (w.x - v.x0) * v.ppt,
@@ -541,50 +589,7 @@ const Renderer = (() => {
                 cy = (d.y + 0.5 - v.y0) * v.ppt;
             if (cx < -v.ppt * 2 || cy < -v.ppt * 2 || cx > v.w + v.ppt * 2 || cy > v.h + v.ppt * 2) return;
             const r = v.ppt * 0.38;
-            // Schatten
-            c.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            c.beginPath();
-            c.ellipse(cx, cy + r * 0.85, r * 0.95, r * 0.38, 0, 0, Math.PI * 2);
-            c.fill();
-            // Körper
-            const body = c.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r * 1.05);
-            body.addColorStop(0, shade(t.color, 0.45));
-            body.addColorStop(0.6, t.color);
-            body.addColorStop(1, shade(t.color, -0.35));
-            c.beginPath();
-            c.arc(cx, cy, r, 0, Math.PI * 2);
-            c.fillStyle = body;
-            c.fill();
-            c.lineWidth = Math.max(1.5, v.ppt * 0.07);
-            c.strokeStyle = 'rgba(15, 5, 20, 0.9)';
-            c.stroke();
-            // Augen in Blickrichtung (im Stand schauen sie nach unten)
-            const h = headingOf(t);
-            let hx = h.dx,
-                hy = h.dy;
-            if (!hx && !hy) hy = 1;
-            const hl = Math.hypot(hx, hy);
-            hx /= hl;
-            hy /= hl;
-            const ox = hx * r * 0.32,
-                oy = hy * r * 0.32;
-            const sx = -hy * r * 0.3,
-                sy = hx * r * 0.3;
-            c.fillStyle = '#fff';
-            c.beginPath();
-            c.arc(cx + ox - sx, cy + oy - sy, r * 0.17, 0, Math.PI * 2);
-            c.arc(cx + ox + sx, cy + oy + sy, r * 0.17, 0, Math.PI * 2);
-            c.fill();
-            c.fillStyle = '#10051a';
-            c.beginPath();
-            c.arc(cx + ox * 1.3 - sx, cy + oy * 1.3 - sy, r * 0.08, 0, Math.PI * 2);
-            c.arc(cx + ox * 1.3 + sx, cy + oy * 1.3 + sy, r * 0.08, 0, Math.PI * 2);
-            c.fill();
-            // Waffe
-            if (t.weapon) {
-                c.fillStyle = '#c9fdff';
-                c.fillRect(cx + r * 0.7, cy - r * 0.15, r * 0.5, r * 0.3);
-            }
+            drawFigure(c, cx, cy, r, t, Math.max(1.5, v.ppt * 0.07));
             // Auswahlring
             if (o.highlightId === t.id) {
                 c.lineWidth = Math.max(2, v.ppt * 0.08);
@@ -739,6 +744,7 @@ const Renderer = (() => {
             if (i >= 0) targets.splice(i, 1);
         },
         getDisplayPos,
+        drawFigure,
         getTerrainCanvas() {
             syncTerrain();
             return terrain;

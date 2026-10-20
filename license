@@ -1,0 +1,151 @@
+HUNGERSPIELE SIMULATION (HNG) – LIZENZ FÜR EIN FANPROJEKT
+Version 1.0
+
+Copyright (c) 2025–2026 INSIDEyourPC (auch bekannt als trex159)
+
+Dieses Projekt ist ein unabhängiges, inoffizielles Fanprojekt. Es steht in
+keiner Verbindung zu den Rechteinhabern von "Die Tribute von Panem" bzw.
+"The Hunger Games". Diese Lizenz regelt ausschließlich, was der Urheber selbst
+geschaffen hat (siehe Abschnitt 1).
+
+
+1. GEGENSTAND DER LIZENZ
+
+"Das Projekt" umfasst Quellcode, Spielregeln und Simulationslogik, Konzept,
+Benutzeroberfläche, Gestaltung, eigene Texte und eigene Grafiken dieser
+Anwendung, einschließlich aller Dateien, die diese Lizenz mitliefern.
+
+Nicht Gegenstand dieser Lizenz sind:
+  a) Titel, Namen, Figuren, Welt und sonstige Inhalte von "Die Tribute von
+     Panem" / "The Hunger Games" (siehe Abschnitt 5),
+  b) Material Dritter, z. B. Schriftarten, Bibliotheken oder Texturen. Dafür
+     gelten die jeweiligen eigenen Lizenzen (siehe Abschnitt 7).
+
+
+2. WAS ERLAUBT IST
+
+Unter den Bedingungen dieser Lizenz darfst du das Projekt unentgeltlich
+  - nutzen und ausführen,
+  - kopieren und weitergeben,
+  - verändern und weiterentwickeln,
+  - in Teilen oder als Ganzes in eigenen nicht-kommerziellen Projekten
+    verwenden.
+Voraussetzung ist immer, dass du die Abschnitte 3 und 4 einhältst.
+
+
+3. NAMENSNENNUNG (PFLICHT FÜR JEDE KOPIE)
+
+Jede Kopie, Weitergabe, Abwandlung und jede Verwendung von Teilen des
+Projekts muss den Urheber nennen:
+
+  Basiert auf der "Hungerspiele Simulation" von INSIDEyourPC (trex159).
+
+Dabei gilt:
+  a) Der Hinweis muss gut sichtbar sein, bei Webseiten und Anwendungen z. B. im
+     Footer oder in den Credits, bei Quellcode im Kopf der Dateien oder in einer
+     README.
+  b) Diese Lizenzdatei (oder ein Link darauf) muss jeder Kopie beiliegen.
+  c) Änderungen müssen als solche kenntlich gemacht werden. Es darf nicht der
+     Eindruck entstehen, der Urheber habe die Abwandlung geschaffen, geprüft
+     oder befürwortet.
+  d) Der Urheber darf nicht als eigene Leistung eines anderen ausgegeben werden.
+
+
+4. NUR NICHT-KOMMERZIELLE NUTZUNG
+
+Jede kommerzielle Nutzung ist ohne vorherige schriftliche Erlaubnis des
+Urhebers untersagt. Kommerziell ist insbesondere:
+  - der Verkauf oder die Vermietung des Projekts oder von Teilen davon,
+  - der Einsatz hinter Bezahlschranken oder in kostenpflichtigen Produkten
+    und Diensten,
+  - Werbung, Affiliate-Links oder Sponsoring auf Seiten, die das Projekt
+    anbieten,
+  - die Nutzung in einem Unternehmen oder für einen Zweck, der auf
+    Einnahmen oder wirtschaftlichen Vorteil gerichtet ist.
+
+Erlaubt bleibt die private Nutzung, Nutzung in Bildung und Forschung, in
+Vereinen und die kostenlose Bereitstellung (z. B. über GitHub Pages) ohne
+Werbung. Das gelegentliche Vorführen des Projekts in Videos oder Streams ist
+erlaubt, solange nicht das Projekt selbst verkauft wird und der Urheber genannt
+wird.
+
+Eine kommerzielle Lizenz kann beim Urheber angefragt werden.
+
+
+5. FANPROJEKT UND RECHTE DRITTER (PANEM / HUNGER GAMES)
+
+  a) Der Urheber hat keine Rechte an "Die Tribute von Panem" / "The Hunger
+     Games" und erhebt keine. Diese Lizenz erteilt keine Rechte an Marken,
+     Namen, Figuren, Texten oder anderen Inhalten der Rechteinhaber.
+  b) Das Projekt übernimmt die Grundidee des Genres und simuliert sie auf
+     eigene Weise. Es ist nicht von den Rechteinhabern genehmigt oder
+     unterstützt.
+  c) Wer das Projekt weitergibt oder abwandelt, ist selbst dafür
+     verantwortlich, dass seine Fassung keine Rechte Dritter verletzt. Der
+     Hinweis auf den Fanprojekt-Charakter (Footer und Disclaimer) ist
+     beizubehalten.
+  d) Beanstanden die Rechteinhaber das Projekt oder einzelne Teile, darf der
+     Urheber die Verbreitung ganz oder teilweise einstellen. Die Rechte aus
+     dieser Lizenz bestehen dann nur noch, soweit sie rechtlich zulässig sind.
+
+
+6. URHEBERSCHAFT UND KI-UNTERSTÜTZUNG
+
+  a) Die Ideen, das Konzept, die Spielregeln, die Simulationslogik, die
+     Gestaltungsentscheidungen sowie Auswahl, Anleitung, Zusammenstellung und
+     Überarbeitung stammen vom Urheber.
+  b) Viele Teile des Quellcodes wurden mit starker Unterstützung von
+     KI-Werkzeugen (u. a. Claude von Anthropic) nach den Vorgaben des Urhebers
+     erstellt.
+  c) Ob an rein KI-erzeugten Teilen ein Urheberrecht besteht, ist je nach
+     Rechtsordnung unklar. Der Urheber macht Rechte an solchen Teilen geltend,
+     soweit das Gesetz sie ihm zuspricht, und sichert nicht zu, dass sie
+     schutzfähig sind. Die Bedingungen dieser Lizenz gelten für alle Teile,
+     soweit dafür Rechte bestehen. Unabhängig davon bittet der Urheber darum,
+     die Namensnennung in Abschnitt 3 immer einzuhalten.
+
+
+7. MATERIAL DRITTER
+
+Schriftarten (z. B. DM Sans), Bibliotheken, Texturen oder andere fremde Dateien
+stehen unter ihren eigenen Lizenzen. Deren Bedingungen gehen für diese Dateien
+dieser Lizenz vor und sind bei der Weitergabe einzuhalten.
+
+
+8. HAFTUNGSAUSSCHLUSS
+
+Das Projekt wird unentgeltlich und "wie besehen" bereitgestellt, ohne
+Gewährleistung für Fehlerfreiheit, Eignung für einen bestimmten Zweck oder
+Rechtefreiheit. Soweit gesetzlich zulässig, haftet der Urheber nur für Vorsatz
+und grobe Fahrlässigkeit. Die Haftung für Schäden an Leben, Körper und
+Gesundheit sowie zwingende gesetzliche Haftung bleiben unberührt.
+
+
+9. BEENDIGUNG BEI VERSTOSS
+
+Wer gegen diese Lizenz verstößt, verliert die eingeräumten Rechte automatisch.
+Die Rechte leben wieder auf, wenn der Verstoß innerhalb von 30 Tagen nach einem
+Hinweis des Urhebers beseitigt wird. Bereits an Dritte weitergegebene Kopien,
+die diese Lizenz einhalten, bleiben davon unberührt.
+
+
+10. SONSTIGES
+
+  - Es gilt deutsches Recht, soweit zwingende Vorschriften nicht entgegenstehen.
+  - Ist eine Bestimmung unwirksam, bleiben die übrigen Bestimmungen wirksam.
+  - Maßgeblich ist die deutsche Fassung. Die englische Zusammenfassung unten
+    dient nur der Orientierung.
+  - Kontakt: [GitHub-Profil oder Discord eintragen]
+
+
+---------------------------------------------------------------------------
+SUMMARY (English, non-binding)
+
+Fan project, not affiliated with the rights holders of The Hunger Games. You
+may use, copy and modify the project for NON-COMMERCIAL purposes only, and
+every copy or derivative must credit "INSIDEyourPC (trex159)" and include this
+license. No rights to Hunger Games / Panem names, characters or content are
+granted or claimed. Large parts of the code were written with AI assistance
+under the author's direction; the concept, rules and logic are the author's.
+Third-party files (fonts, libraries) keep their own licenses. Provided "as is".
+Commercial licensing on request.

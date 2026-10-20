@@ -5,6 +5,77 @@ const REGEN_DELAY_TICKS = 40;
 const REGEN_PER_TICK = 0.008;
 const REST_REGEN_MULT = 3;
 
+/* Gefahrenfelder (Lava, Fallen) einmal pro Tick einsammeln statt pro Tribut ein
+ * 51x51-Feld abzusuchen. Wird nur neu gescannt, wenn sich das Gelände geändert hat
+ * (Endspiel-Lava, Malen in der Pause, Start/Fortsetzen). */
+const Hazards = (() => {
+    let lava = [];
+    let trap = [];
+    let dirty = true;
+    return {
+        markDirty() {
+            dirty = true;
+        },
+        isDirty: () => dirty,
+        refresh() {
+            lava = [];
+            trap = [];
+            for (let y = 0; y < HEIGHT; y++) {
+                const row = grid[y];
+                for (let x = 0; x < WIDTH; x++) {
+                    const tile = row[x];
+                    if (tile === 'lava') lava.push(x, y);
+                    else if (tile === 'trap') trap.push(x, y);
+                }
+            }
+            dirty = false;
+        },
+        // Nächstes Feld der Art 'lava' | 'trap' im Quadrat +-range (Manhattan-Abstand), sonst null
+        nearest(kind, px, py, rangeRaw) {
+            const list = kind === 'lava' ? lava : trap;
+            if (list.length === 0) return null;
+            const range = Math.floor(rangeRaw);
+            let minDist = Infinity;
+            let best = null;
+            const side = 2 * range + 1;
+            if (list.length / 2 > side * side) {
+                // sehr viel Lava (Endspiel): Suchfenster ist billiger als die Liste
+                for (let dx = -range; dx <= range; dx++) {
+                    for (let dy = -range; dy <= range; dy++) {
+                        const nx = px + dx;
+                        const ny = py + dy;
+                        if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] === kind) {
+                            const dist = Math.abs(dx) + Math.abs(dy);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                best = {
+                                    x: nx,
+                                    y: ny
+                                };
+                            }
+                        }
+                    }
+                }
+                return best;
+            }
+            for (let i = 0; i < list.length; i += 2) {
+                const dx = list[i] - px;
+                const dy = list[i + 1] - py;
+                if (dx < -range || dx > range || dy < -range || dy > range) continue;
+                const dist = Math.abs(dx) + Math.abs(dy);
+                if (dist < minDist) {
+                    minDist = dist;
+                    best = {
+                        x: list[i],
+                        y: list[i + 1]
+                    };
+                }
+            }
+            return best;
+        }
+    };
+})();
+
 const NAMES_MALE = [
     'Albyn', 'Blythe', 'Crispin', 'Dorian', 'Edwyn',
     'Faron', 'Galen', 'Hadley', 'Iver', 'Jory',
@@ -158,7 +229,9 @@ class Tribute {
                 }
                 return; // Wichtig: Rückzug beendet den Move-Tick
             }
-            if (this.behavior === 'aggressiv' && nearestWeapon) {
+            if (this.breakoutStep()) {
+                // Ausbruch aus einer Pendelbewegung läuft (siehe script_search.js)
+            } else if (this.behavior === 'aggressiv' && nearestWeapon) {
                 this.moveTowards(nearestWeapon.x, nearestWeapon.y);
             } else if ((this.behavior === 'defensiv' || this.behavior === 'ängstlich') && nearestWeapon) {
                 if (!enemyNearby) {
@@ -194,7 +267,7 @@ class Tribute {
                         } else if (target && this.getDistance(target) < 6 && ((this.health >= target.health + 5 && this.attributes.schlau) || (this.health >= target.health - 10 && !this.attributes.schlau) || (this.attributes.stark && this.health >= 15) || Math.random() >= 0.9)) {
                             this.moveTowards(target.x, target.y);
                         } else if (target) {
-                            this.moveAwayFrom(target.x, target.y);
+                            this.fleeFrom(target.x, target.y);
                         } else if (lavaStart) {
                             this.moveTowards(middleofarena.x, middleofarena.y)
                         } else {
@@ -209,7 +282,7 @@ class Tribute {
                         if (target && this.getDistance(target) < 5 && ((this.health >= target.health + 10 && this.attributes.schlau) || (this.health >= target.health && !this.attributes.schlau) || Math.random() >= 0.91)) {
                             this.moveTowards(target.x, target.y);
                         } else if (target) {
-                            this.moveAwayFrom(target.x, target.y);
+                            this.fleeFrom(target.x, target.y);
                         } else if (lavaStart) {
                             this.moveTowards(middleofarena.x, middleofarena.y)
                         } else {
@@ -228,7 +301,7 @@ class Tribute {
                             if (Math.random() >= 0.5) {
                                 this.hide();
                             } else {
-                                this.moveAwayFrom(target.x, target.y);
+                                this.fleeFrom(target.x, target.y);
                             }
                         } else {
                             this.idleStep();
@@ -345,26 +418,7 @@ class Tribute {
     }
     // Sichtweite-abhängige Fallen-Suche (nur für schlaue Tribute)
     findNearbyTrap(viewDist = MAX_VIEW_DISTANCE) {
-        let minDist = Infinity;
-        let nearestTrap = null;
-        const range = Math.floor(viewDist); // Sichtweite kann durch das Wetter gebrochen sein
-        for (let dx = -range; dx <= range; dx++) {
-            for (let dy = -range; dy <= range; dy++) {
-                let nx = this.x + dx;
-                let ny = this.y + dy;
-                if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] === 'trap') {
-                    let dist = Math.abs(dx) + Math.abs(dy);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        nearestTrap = {
-                            x: nx,
-                            y: ny
-                        };
-                    }
-                }
-            }
-        }
-        return nearestTrap;
+        return Hazards.nearest('trap', this.x, this.y, viewDist); // Sichtweite kann durch das Wetter gebrochen sein
     }
     // In die Klasse Tribute einfügen:
     checkEnvironment() {
@@ -829,27 +883,8 @@ class Tribute {
     }
     // Neue Hilfsfunktion: Finde angrenzende Lava
     findNearbyLava() {
-        // Sucht im Sichtbereich (wetterabhängig) nach Lava, gibt das nächste Lavafeld zurück (oder null)
-        let minDist = Infinity;
-        let nearestLava = null;
-        const range = Math.floor(MAX_VIEW_DISTANCE * getWeatherViewFactor());
-        for (let dx = -range; dx <= range; dx++) {
-            for (let dy = -range; dy <= range; dy++) {
-                let nx = this.x + dx;
-                let ny = this.y + dy;
-                if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] === 'lava') {
-                    let dist = Math.abs(dx) + Math.abs(dy);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        nearestLava = {
-                            x: nx,
-                            y: ny
-                        };
-                    }
-                }
-            }
-        }
-        return nearestLava;
+        // Sichtbereich (wetterabhängig) nach Lava absuchen, nächstes Lavafeld oder null
+        return Hazards.nearest('lava', this.x, this.y, MAX_VIEW_DISTANCE * getWeatherViewFactor());
     }
     findNearestWeapon() {
         if (this.weapon || weapons.length === 0) return null;
@@ -1055,25 +1090,7 @@ class Animal {
         }
     }
     findNearbyLava() {
-        let minDist = Infinity;
-        let nearestLava = null;
-        for (let dx = -MAX_VIEW_DISTANCE; dx <= MAX_VIEW_DISTANCE; dx++) {
-            for (let dy = -MAX_VIEW_DISTANCE; dy <= MAX_VIEW_DISTANCE; dy++) {
-                let nx = this.x + dx;
-                let ny = this.y + dy;
-                if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] === 'lava') {
-                    let dist = Math.abs(dx) + Math.abs(dy);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        nearestLava = {
-                            x: nx,
-                            y: ny
-                        };
-                    }
-                }
-            }
-        }
-        return nearestLava;
+        return Hazards.nearest('lava', this.x, this.y, MAX_VIEW_DISTANCE);
     }
 }
 // Ergänzung: Tribute können Tiere kontern

@@ -1,6 +1,6 @@
 # Hungerspiele Simulation
 
-**Inoffizielles Fanprojekt, aktuelle Version HNG 11**
+**Inoffizielles Fanprojekt, aktuelle Version HNG 11.1**
 
 Eine Browser-Simulation, in der bis zu 48 Tribute auf einer zufällig generierten Arena um das Überleben kämpfen. Jeder Tribut trifft seine Entscheidungen selbst: Er sucht Waffen, schließt Freundschaften, flieht vor Gefahren, regeneriert sich, rächt sich und kann Freunde verraten. Du bist der Gamemaker und greifst mit Wetter, Wildtieren, Heilung und Endspiel ein.
 

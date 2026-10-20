@@ -24,7 +24,7 @@ function formatGameDuration(fromTick, toTick) {
 
 function updateClockDisplay() {
     const el = document.getElementById('game-clock-value');
-    if (el) el.textContent = formatGameTime();
+    if (el) el.textContent = formatGameTime() + (typeof ultraMode !== 'undefined' && ultraMode ? ' ⚡ Ultra' : '');
 }
 
 // Pro Simulationsschritt aufrufen (direkt nach simTick++)

@@ -194,13 +194,116 @@ function pauseSimulation() {
         setUIForState('paused');
     }
 }
-// Passe runSimulation an:
+// ---------------------------------------------------------------------
+// Simulationsschleife
+//
+// Zeitgesteuert mit Akkumulator: Pro Durchlauf werden so viele Schritte
+// gerechnet, wie seit dem letzten Durchlauf fällig sind. Kein Schritt wird
+// je übersprungen; schafft der Browser das Tempo nicht, läuft die Zeit
+// einfach langsamer. Darstellung, Uhr und Statistik werden pro Durchlauf
+// nur einmal aktualisiert statt nach jedem Schritt.
+//
+// Ultra-Modus (Doppelklick auf den Pause-Knopf): Zielwert 150 x Standardtempo
+// (5 Zeitpunkte/s = 750 Zeitpunkte/s) bzw. so schnell, wie der Browser kann.
+// Partikel und der Vollbild-Ticker ruhen dabei.
+// ---------------------------------------------------------------------
+const ULTRA_TICKS_PER_SECOND = 750;
+const SIM_SLICE_BUDGET_MS = 8; // Rechenzeit pro Durchlauf im Normalbetrieb
+const ULTRA_SLICE_BUDGET_MS = 12; // im Ultra-Modus; der Rest des Frames bleibt fürs Zeichnen
+let ultraMode = false;
+let ultraFxBackup = null;
+let simLoopActive = false;
+let simLoopScheduled = false;
+let simLoopLast = 0;
+let simLoopAcc = 0;
+const simChannel = new MessageChannel(); // ohne die 4-ms-Mindestwartezeit von setTimeout
+simChannel.port1.onmessage = simLoop;
+
+function currentTickInterval() {
+    const speed = Math.max(1, Number(document.getElementById('speed').value) || 5);
+    return 1000 / (ultraMode ? ULTRA_TICKS_PER_SECOND : speed);
+}
+
+function scheduleSimLoop(delayMs) {
+    if (simLoopScheduled) return;
+    simLoopScheduled = true;
+    if (delayMs <= 0 && ultraMode) simChannel.port2.postMessage(0);
+    else setTimeout(simLoop, Math.max(0, delayMs));
+}
+
+function setUltraMode(on) {
+    if (on === ultraMode) return;
+    ultraMode = on;
+    if (on) {
+        ultraFxBackup = Fx.state.enabled;
+        Fx.state.enabled = false;
+        Fx.clear();
+    } else if (ultraFxBackup !== null) {
+        Fx.state.enabled = ultraFxBackup;
+        ultraFxBackup = null;
+    }
+    document.body.classList.toggle('ultra-mode', on);
+    logEvent(on ? 'Der Gamemaker aktiviert den Ultra-Modus.' : 'Der Gamemaker beendet den Ultra-Modus.', 'info');
+    updateClockDisplay();
+}
+// Doppelklick auf Pause (Hauptmenü und Vollbild) schaltet den Ultra-Modus um
+document.addEventListener('dblclick', e => {
+    const btn = e.target.closest && e.target.closest('button');
+    if (!btn || !btn.matches('[onclick="pauseSimulation()"], [data-act="pause"]')) return;
+    if (simulationRunning || simulationPaused) setUltraMode(!ultraMode);
+});
+
+// Startet die Schleife (Start und Fortsetzen); läuft sie schon, passiert nichts
 function runSimulation() {
     if (!simulationRunning || simulationPaused) return;
+    Hazards.markDirty();
+    if (simLoopActive) return;
+    simLoopActive = true;
+    simLoopAcc = 0;
+    simLoopLast = performance.now() - currentTickInterval(); // erster Schritt sofort
+    scheduleSimLoop(0);
+}
+
+function simLoop() {
+    simLoopScheduled = false;
+    if (!simulationRunning || simulationPaused || winnerDeclared) {
+        simLoopActive = false;
+        return;
+    }
+    const start = performance.now();
+    const interval = currentTickInterval();
+    simLoopAcc += Math.min(start - simLoopLast, 250);
+    simLoopLast = start;
+    const budget = ultraMode ? ULTRA_SLICE_BUDGET_MS : SIM_SLICE_BUDGET_MS;
+    let steps = 0;
+    while (simLoopAcc >= interval && simulationRunning && !winnerDeclared) {
+        simLoopAcc -= interval;
+        simulationStep();
+        steps++;
+        if (performance.now() - start > budget) break;
+    }
+    if (steps > 0) {
+        advanceGameClock();
+        drawGrid();
+        updateStatsTable();
+    }
+    if (!simulationRunning || simulationPaused || winnerDeclared) {
+        simLoopActive = false;
+        if (winnerDeclared && ultraMode) setUltraMode(false);
+        return;
+    }
+    // Rückstand nicht auflaufen lassen: die Zeit läuft dann langsamer, es fällt aber kein Schritt weg
+    if (simLoopAcc > interval * 4) simLoopAcc = interval;
+    scheduleSimLoop(interval - simLoopAcc);
+}
+
+// Ein einzelner Simulationsschritt (ohne Darstellung)
+function simulationStep() {
     simTick++;
-    advanceGameClock();
-    tributes.forEach(tribute => {
-        if (!tribute.alive) return;
+    if (Hazards.isDirty() || lavaStart) Hazards.refresh();
+    for (let i = 0; i < tributes.length; i++) {
+        const tribute = tributes[i];
+        if (!tribute.alive) continue;
         const oldX = tribute.x;
         const oldY = tribute.y;
         tribute.move();
@@ -208,11 +311,12 @@ function runSimulation() {
             dx: tribute.x - oldX,
             dy: tribute.y - oldY
         };
+        if (tribute.alive) tribute.trackOscillation();
         SimEvents.emit('moved', {
             tribute,
             move: tribute.lastMove
         });
-    });
+    }
     // Nach Bewegungen: kurzfristige soziale Anpassungen
     tributes.forEach(tribute => {
         if (tribute.alive) tribute.updateSocialRelations();
@@ -226,9 +330,6 @@ function runSimulation() {
     SimEvents.emit('tick', {
         tick: simTick
     });
-    drawGrid();
-    updateStatsTable();
-    if (!winnerDeclared) setTimeout(runSimulation, 1000 / document.getElementById('speed').value);
 }
 // Passe startSimulation an:
 function startSimulation() {
@@ -283,16 +384,14 @@ function checkForWinner() {
             drawGrid();
         }
     }
-    if (aliveTributes.length === 1 && !winnerDeclared) {
+    if (aliveTributes.length <= 1 && !winnerDeclared) {
         winnerDeclared = true;
-        logWin(`${aliveTributes[0].name} hat gewonnen!`);
+        logWin(aliveTributes.length === 1 ? `${aliveTributes[0].name} hat gewonnen!` : `Niemand hat überlebt.`);
         simulationRunning = false;
         setUIForState('stopped');
-    } else if (aliveTributes.length === 0 && !winnerDeclared) {
-        winnerDeclared = true;
-        logWin(`Niemand hat überlebt.`);
-        simulationRunning = false;
-        setUIForState('stopped');
+        SimEvents.emit('simEnd', {
+            winners: aliveTributes
+        });
     }
 }
 // Gamemaker: Endspiel (Zusammentreiben + Lava-Fortschritt) anhalten bzw. fortsetzen
@@ -422,6 +521,7 @@ function paintTerrain(x, y, mode, brushSize) {
             if (gx >= 0 && gx < WIDTH && gy >= 0 && gy < HEIGHT) grid[gy][gx] = mode;
         }
     }
+    Hazards.markDirty();
     drawGrid();
 }
 canvas.addEventListener('mousemove', function (e) {
@@ -655,8 +755,9 @@ function appendLogEntry(message, type = "info", tick = simTick) {
     div.dataset.type = type;
     div.innerHTML = `<span class="log-time" style="opacity:.65;font-variant-numeric:tabular-nums;">[${formatGameTimeShort(tick)}]</span> ${message}`;
     log.appendChild(div);
-    log.scrollTop = log.scrollHeight;
-    SimEvents.emit('log', {
+    applyLogFilterTo(div);
+    scheduleLogScroll();
+    if (!ultraMode) SimEvents.emit('log', {
         message: String(message),
         type,
         tick
@@ -672,7 +773,6 @@ function appendLogEntry(message, type = "info", tick = simTick) {
     if (recentLogEvents.length > MAX_LOG_HISTORY) {
         recentLogEvents.shift();
     }
-    updateLogFilterVisibility();
     return entry;
 }
 // Prüft, ob zwei Ereignisse identisch sind
@@ -802,32 +902,16 @@ function updateLiveCount() {
     const alive = tributes.filter(t => t.alive).length;
     el.textContent = alive;
 }
-// Funktion zum Aktualisieren der Log-Filter-Anzeige
-function updateLogFilterVisibility() {
-    // Fallback: Wenn keine Filterbar existiert, alles anzeigen
-    const filterBar = document.getElementById('log-filter-bar');
-    if (!filterBar) {
-        document.querySelectorAll('#log > div').forEach(div => div.style.display = '');
-        return;
-    }
-    // Hole den aktiven Button aus der Filterbar
-    const activeBtn = filterBar.querySelector('.log-filter-btn.active');
-    const activeType = activeBtn ? activeBtn.dataset.type : 'all';
-    document.querySelectorAll('#log > div').forEach(div => {
-        if (activeType === 'all') {
-            div.style.display = '';
-        } else if (activeType === 'win') {
-            if (div.classList.contains('log-win')) div.style.display = '';
-            else div.style.display = 'none';
-        } else {
-            if (div.classList.contains('log-win')) {
-                div.style.display = '';
-            } else if (div.classList.contains(`log-${activeType}`)) {
-                div.style.display = '';
-            } else {
-                div.style.display = 'none';
-            }
-        }
+// Der Log-Filter (Kategorien anzeigen/ausblenden, Tribut) liegt in script_logfilter.js
+let logScrollQueued = false;
+
+function scheduleLogScroll() {
+    if (logScrollQueued) return;
+    logScrollQueued = true;
+    requestAnimationFrame(() => {
+        logScrollQueued = false;
+        const log = document.getElementById('log');
+        if (log) log.scrollTop = log.scrollHeight;
     });
 }
 // Funktion zum Aktualisieren des Tribute-Profils im UI (z.B. für "dead"-Status)
@@ -880,17 +964,6 @@ function loadVorlageFile(filename, type) {
 document.addEventListener('DOMContentLoaded', () => {
     createStatsPanel();
     updateStatsTable();
-    // Log-Filter Buttons
-    const filterBar = document.getElementById('log-filter-bar');
-    if (filterBar) {
-        filterBar.querySelectorAll('.log-filter-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                filterBar.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                updateLogFilterVisibility();
-            });
-        });
-    }
     // Initialisiere Tribute und Tiere und zeichne alles
     createTributes(parseInt(document.getElementById('tribute-count').value));
     animals = []; // Keine Tiere zu Beginn

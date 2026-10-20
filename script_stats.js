@@ -5,6 +5,7 @@
  *   - Laufweg jedes Tributs (ein Punkt pro Zeitpunkt, solange er lebt)
  *   - Treffer (Ort, Menge, Angreifer) und Todesorte
  *   - Momentaufnahme der Arena vor dem Start, also ohne Endspiel-Lava
+ *   - Spielende und Platzierung (Siegerpodest, gleichzeitige Tode teilen sich den Platz)
  *
  * Die Anzeige liegt in script_stats_ui.js.
  * ===================================================================== */
@@ -13,6 +14,7 @@ const SimStats = (() => {
     let startGrid = null;
     let startTerrain = null; // Gelände-Bild der Start-Arena (wird beim ersten Bedarf gemalt)
     let running = false;
+    let finished = false; // Sieger steht fest bzw. niemand hat überlebt
     const paths = new Map(); // Tribut-ID -> [x0, y0, x1, y1, ...]; Index i/2 = Zeitpunkt
     const hits = []; // {tick, x, y, amount, srcId, tgtId}
     const deaths = []; // {id, name, color, x, y, tick, reason}
@@ -26,6 +28,7 @@ const SimStats = (() => {
         deaths.length = 0;
         deathTick.clear();
         running = true;
+        finished = false;
         tributes.forEach(t => paths.set(t.id, [t.x, t.y]));
     }
 
@@ -60,9 +63,12 @@ const SimStats = (() => {
 
     function recordDeath({
         tribute,
-        reason
+        reason,
+        killer
     }) {
         if (!running || !tribute) return;
+        // Wie im Log: bei Kampf zählt der Killer, sonst der letzte Angreifer
+        const responsible = reason === 'Kampf' ? (killer || tribute.lastAttacker) : null;
         deathTick.set(tribute.id, simTick);
         deaths.push({
             id: tribute.id,
@@ -71,20 +77,61 @@ const SimStats = (() => {
             x: tribute.x,
             y: tribute.y,
             tick: simTick,
-            reason
+            reason,
+            killerName: responsible ? responsible.name : null
         });
         // Letzten Wegpunkt auf die Todesposition setzen
         const path = paths.get(tribute.id);
         if (path) path.push(tribute.x, tribute.y);
     }
 
+    function causeOf(id) {
+        const d = deaths.find(entry => entry.id === id);
+        if (!d || !d.reason) return null;
+        return d.killerName ? `${d.reason} durch ${d.killerName}` : d.reason;
+    }
+
+    // Plätze 1 bis 3. Überlebende stehen vor allen Toten; wer im selben Zeitpunkt stirbt, teilt sich
+    // den Platz, der nächste Platz wird dann übersprungen (zwei Zweite -> kein Dritter, danach Platz 4).
+    function buildPodium() {
+        const groups = new Map(); // Ausscheide-Zeitpunkt (Infinity = überlebt) -> Tribute
+        tributes.forEach(t => {
+            const key = t.alive ? Infinity : (deathTick.get(t.id) ?? 0);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(t);
+        });
+        const podium = [];
+        let place = 1;
+        const keys = [...groups.keys()].sort((a, b) => a === b ? 0 : (b > a ? 1 : -1));
+        for (const key of keys) {
+            if (place > 3) break;
+            const members = groups.get(key);
+            podium.push({
+                place,
+                members: members.map(t => ({
+                    tribute: t,
+                    kills: t.kills || 0,
+                    survived: t.alive,
+                    cause: t.alive ? null : causeOf(t.id)
+                }))
+            });
+            place += members.length;
+        }
+        return podium;
+    }
+
     SimEvents.on('simStart', begin);
+    SimEvents.on('simEnd', () => {
+        if (running) finished = true;
+    });
     SimEvents.on('tick', recordTick);
     SimEvents.on('damage', recordHit);
     SimEvents.on('death', recordDeath);
 
     return {
         hasData: () => running && startGrid !== null,
+        isFinished: () => finished,
+        getPodium: buildPodium,
         getPath: id => paths.get(id) || null,
         hits,
         deaths,

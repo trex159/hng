@@ -1,13 +1,16 @@
 /* =====================================================================
  * Statistik-Bereich
  *
- * Ein- und ausblendbar, mit vier Ansichten:
+ * Ein- und ausblendbar, mit fünf Ansichten:
  *   Tabelle   sortierbare Zahlen
  *   Balken    eine Kategorie als Balkendiagramm
  *   Heatmap   Aufenthalt, Schaden oder Todesorte über die ganze Arena
  *   Pfade     Laufwege einzelner Tribute auf der Arena VOR dem Endspiel
  *             (ohne Endspiel-Lava), halbtransparent: wo sich ein Weg
  *             kreuzt oder wiederholt, wird die Linie kräftiger
+ *   Podest    Platz 1 bis 3 nach Spielende mit Figur, Namen, Kills und Todesursache;
+ *             wer gleichzeitig stirbt, teilt sich den Platz (springt am Spielende
+ *             automatisch auf diese Ansicht)
  *
  * Alles wird selbst auf Canvas gezeichnet, es ist keine Bibliothek nötig.
  * Die Daten kommen aus script_stats.js.
@@ -75,6 +78,7 @@ const statsView = {
     pathTick: null, // null = bis zum letzten Zeitpunkt
     pathMarkers: true,
     chipSignature: '',
+    podiumSignature: '',
     pending: false,
     lastRender: 0
 };
@@ -154,6 +158,7 @@ function createStatsPanel() {
                 <button type="button" class="stats-tab" data-tab="bars">Balken</button>
                 <button type="button" class="stats-tab" data-tab="heat">Heatmap</button>
                 <button type="button" class="stats-tab" data-tab="paths">Pfade</button>
+                <button type="button" class="stats-tab" data-tab="podium">Podest</button>
             </div>
 
             <div class="stats-pane" data-pane="table">
@@ -213,6 +218,10 @@ function createStatsPanel() {
                 </div>
                 <div class="stats-canvas-wrap"><canvas id="stats-path-canvas"></canvas></div>
                 <p class="stats-hint">Die Arena ist ohne Endspiel-Lava dargestellt. Die Linien sind halbtransparent: je kräftiger, desto öfter wurde der Weg begangen oder gekreuzt.</p>
+            </div>
+
+            <div class="stats-pane" data-pane="podium" hidden>
+                <div id="stats-podium" class="podium-wrap"></div>
             </div>
         </div>
         <div id="stats-tip" class="stats-tip" hidden></div>
@@ -356,6 +365,9 @@ function renderStats() {
             break;
         case 'paths':
             renderStatsPaths();
+            break;
+        case 'podium':
+            renderStatsPodium();
             break;
     }
 }
@@ -739,3 +751,84 @@ function renderStatsPaths() {
         });
     }
 }
+
+// ---------------------------------------------------------------------
+// Siegerpodest (nach Spielende)
+// ---------------------------------------------------------------------
+const PODIUM_SLOT_ORDER = [2, 1, 3]; // links Silber, Mitte Gold, rechts Bronze
+
+function buildPodiumFigure(tribute, size) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'podium-figure';
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', tribute.name);
+    const g = fitStatsCanvas(canvas, size, size);
+    // Dieselbe Figur wie in der Arena, die Augen schauen nach vorn (unten)
+    Renderer.drawFigure(g, size * 0.45, size * 0.46, size * 0.3, tribute, Math.max(1.5, size * 0.035), {
+        dx: 0,
+        dy: 1
+    });
+    return canvas;
+}
+
+function buildPodiumPlaque(entry) {
+    const plaque = document.createElement('div');
+    plaque.className = 'podium-plaque';
+    plaque.style.setProperty('--tribute', entry.tribute.color);
+    const kills = `${entry.kills} ${entry.kills === 1 ? 'Kill' : 'Kills'}`;
+    let fate = '';
+    if (entry.survived) fate = '👑 Überlebt';
+    else if (entry.cause) fate = `☠️ ${escapeHtml(entry.cause)}`;
+    plaque.innerHTML = `<b>${escapeHtml(entry.tribute.name)}</b><span>⚔️ ${kills}</span>${fate ? `<span>${fate}</span>` : ''}`;
+    return plaque;
+}
+
+function renderStatsPodium() {
+    const holder = statsEl('stats-podium');
+    if (!SimStats.isFinished()) {
+        if (statsView.podiumSignature !== 'waiting') {
+            statsView.podiumSignature = 'waiting';
+            holder.innerHTML = '<p class="stats-hint">Das Siegerpodest erscheint, sobald das Spiel beendet ist.</p>';
+        }
+        return;
+    }
+    const podium = SimStats.getPodium();
+    // Nur neu aufbauen, wenn sich etwas geändert hat (sonst startet die Animation bei jedem Update neu)
+    const signature = JSON.stringify(podium.map(group => [group.place, group.members.map(m => [m.tribute.id, m.tribute.name, m.tribute.color, m.kills, m.survived, m.cause])]));
+    if (statsView.podiumSignature === signature) return;
+    statsView.podiumSignature = signature;
+
+    const byPlace = new Map(podium.map(group => [group.place, group.members]));
+    const stage = document.createElement('div');
+    stage.className = 'podium';
+    PODIUM_SLOT_ORDER.forEach(place => {
+        const members = byPlace.get(place) || [];
+        const column = document.createElement('div');
+        column.className = `podium-col place-${place}${members.length ? '' : ' empty'}`;
+
+        const figures = document.createElement('div');
+        figures.className = 'podium-figures';
+        members.forEach(m => figures.appendChild(buildPodiumFigure(m.tribute, place === 1 ? 72 : 60)));
+
+        const step = document.createElement('div');
+        step.className = 'podium-step';
+        step.innerHTML = `<span class="podium-place">${place}</span>`;
+        if (members.length > 1) step.insertAdjacentHTML('beforeend', '<small class="podium-note">Geteilter Platz</small>');
+        if (!members.length) step.insertAdjacentHTML('beforeend', '<small class="podium-note">Platz durch Gleichstand vergeben</small>');
+        members.forEach(m => step.appendChild(buildPodiumPlaque(m)));
+
+        column.append(figures, step);
+        stage.appendChild(column);
+    });
+    holder.innerHTML = '';
+    holder.appendChild(stage);
+}
+
+// Am Spielende automatisch zum Podest wechseln (die Statistik-Daten sind dann vollständig)
+SimEvents.on('simEnd', () => {
+    statsView.tab = 'podium';
+    statsView.podiumSignature = '';
+    if (!statsView.ready) return;
+    applyStatsTab();
+    updateStatsTable();
+});

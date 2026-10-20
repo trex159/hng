@@ -12,6 +12,7 @@
  *   moved       { tribute, move: {dx, dy} }       einmal pro Tick und Tribut
  *   tick        { tick }                          Ende eines Simulationsschritts
  *   simStart    {}                                Simulation beginnt
+ *   simEnd      { winners }                       Spiel beendet (winners: Überlebende, leer = niemand)
  *   log         { message, type, tick }           neuer Log-Eintrag
  * ===================================================================== */
 
@@ -22,13 +23,15 @@ const SimEvents = (() => {
             (handlers[type] = handlers[type] || []).push(fn);
         },
         emit(type, data) {
-            (handlers[type] || []).forEach(fn => {
+            const list = handlers[type];
+            if (!list) return;
+            for (let i = 0; i < list.length; i++) {
                 try {
-                    fn(data);
+                    list[i](data);
                 } catch (e) {
                     console.error(`SimEvents "${type}":`, e);
                 }
-            });
+            }
         }
     };
 })();

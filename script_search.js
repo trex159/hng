@@ -22,26 +22,29 @@
 
 const SEARCH_CONFIG = {
     CELL: 5, // Kantenlänge einer Zelle der "Gesehen"-Karte (Felder)
-    AGE_CAP: 400, // Ticks, ab denen eine Zelle als völlig unbekannt gilt
+    AGE_CAP: 800, // Ticks, ab denen eine Zelle als völlig unbekannt gilt
     HEADINGS: 16, // Anzahl Richtungen, die pro Planung bewertet werden
     LINE_LENGTHS: [35, 55, 80], // Kandidatenlängen der Suchlinien (Felder)
     MIN_LINE: 20,
     EDGE_MARGIN: 8, // Suchlinien enden mindestens so weit vom Rand
     REST_EDGE_MARGIN: 14,
     SEARCH_MIN: 80, // Dauer eines Suchmodus (Ticks), danach wird neu entschieden
-    SEARCH_MAX: 160,
+    SEARCH_MAX: 190,
     REST_MIN: 100,
     REST_MAX: 220,
     EVAL_INTERVAL: 15, // Takt der sozialen Prüfung (Ticks)
-    ENEMY_MEMORY: 80, // so lange erinnert man sich an die letzte Position eines Nicht-Freundes
+    ENEMY_MEMORY: 220, // so lange erinnert man sich an die letzte Position eines Nicht-Freundes
     HUNT_MEMORY: 100,
-    FRIEND_MEMORY: 200,
-    HUNT_MIN_HEALTH: 80,
+    FRIEND_MEMORY: 220,
+    HUNT_MIN_HEALTH: 75,
     WEAK_HEALTH: 35, // darunter gilt ein Tribut als geschwächt
     WEAK_REACT_MIN_HEALTH: 55, // nur ab so viel Leben kümmert man sich um Schwache
     WEAK_RECHECK: 80,
-    GROUP_MAX_SIZE: 6,
-    FOLLOW_LIFETIME: 100000
+    GROUP_MAX_SIZE: 8,
+    FOLLOW_LIFETIME: 100000,
+    FLEE_COMMIT: 8, // so viele Ticks läuft man nach einer Flucht weiter, auch wenn der Feind schon außer Sicht ist
+    BREAKOUT_TICKS: 30, // Dauer des erzwungenen Ausbruchs aus einer Pendelbewegung
+    TRAIL_LENGTH: 8 // Positionen, die für die Pendel-Erkennung betrachtet werden
 };
 
 function clampInt(value, min, max) {
@@ -112,7 +115,11 @@ Object.assign(Tribute.prototype, {
                     guardId: null,
                     targetId: null,
                     ignore: {}, // id -> Tick, bis zu dem dieser Freund ignoriert wird
-                    weakCheck: {}
+                    weakCheck: {},
+                    fleeFrom: null, // {x, y, until}: Fluchtpunkt, vor dem man noch ein Stück weiterläuft
+                    breakout: null, // {tx, ty, until}: erzwungenes Ziel nach erkannter Pendelbewegung
+                    trail: [], // letzte Positionen (Pendel-Erkennung)
+                    friendStay: 0
                 },
                 writable: true,
                 enumerable: false,
@@ -313,7 +320,7 @@ Object.assign(Tribute.prototype, {
             if (!hasFollowers && this.health < 40) restChance += 0.3;
             if (this.behavior === 'ängstlich') restChance += 0.3;
             else if (this.behavior === 'defensiv') restChance += 0.1;
-            if (Math.random() < Math.min(0.9, restChance)) {
+            if ((Math.random() < Math.min(0.45, restChance)) || (this.health < 22 && Math.random() < 0.95)) {
                 this.setMode('rest', randomInt(cfg.REST_MIN, cfg.REST_MAX));
                 return;
             }
@@ -345,8 +352,18 @@ Object.assign(Tribute.prototype, {
             this.randomWalk();
             return;
         }
+        const ai = this.getAI();
+        // Nach einer Flucht noch ein Stück weiterlaufen. Ohne das springt der Tribut an der
+        // Sichtgrenze zurück, sieht den Feind wieder und flieht erneut (Pendeln auf zwei Feldern).
+        if (ai.fleeFrom) {
+            if (simTick < ai.fleeFrom.until) {
+                this.moveAwayFrom(ai.fleeFrom.x, ai.fleeFrom.y);
+                return;
+            }
+            ai.fleeFrom = null;
+        }
         this.evaluateSearchMode();
-        switch (this.getAI().mode) {
+        switch (ai.mode) {
             case 'rest':
                 this.restStep();
                 break;
@@ -382,8 +399,19 @@ Object.assign(Tribute.prototype, {
             if (target && this.getDistance(target) > 3) {
                 this.moveTowards(target.x, target.y);
                 ai.plan = null;
+                ai.friendStay = 0;
                 return;
             }
+            if (target) {
+                // Beim Freund angekommen: stehen bleiben statt wegzuplanen und wieder heranzulaufen
+                ai.plan = null;
+                if (++ai.friendStay > 30) {
+                    ai.ignore[target.id] = simTick + 150;
+                    ai.friendStay = 0;
+                }
+                return;
+            }
+            ai.friendStay = 0;
         }
         this.followPlan();
     },
@@ -526,9 +554,9 @@ Object.assign(Tribute.prototype, {
                 if (age < cfg.HUNT_MEMORY && dist < range) {
                     score += 0.6 * (1 - dist / range) * (1 - age / cfg.HUNT_MEMORY);
                 }
-            } else if (age < cfg.ENEMY_MEMORY && dist < range + 5) {
+            } else if (age < cfg.ENEMY_MEMORY && dist < range + 12) {
                 // nicht von Nicht-Freunden gesehen werden: Gebiete um deren letzte Position meiden
-                score -= 0.9 * (1 - dist / (range + 5)) * (1 - age / cfg.ENEMY_MEMORY);
+                score -= 1.6 * (1 - dist / (range + 12)) * (1 - age / cfg.ENEMY_MEMORY);
             }
         }
         return (score - penalty) * (0.9 + Math.random() * 0.2);
@@ -664,6 +692,89 @@ Object.assign(Tribute.prototype, {
             return;
         }
         this.moveTowards(target.x, target.y);
+    },
+
+    /* ------------------------------------------------------------------
+     * Flucht und Pendel-Erkennung
+     * ------------------------------------------------------------------ */
+
+    // Flucht vor einem Feind: Schritt weg, alten Suchplan verwerfen (der führte oft zum Feind zurück)
+    // und merken, wohin weiterzulaufen ist, auch wenn der Feind gleich außer Sicht gerät.
+    fleeFrom(x, y) {
+        const ai = this.getAI();
+        this.moveAwayFrom(x, y);
+        ai.plan = null;
+        ai.planPos = null;
+        ai.fleeFrom = {
+            x,
+            y,
+            until: simTick + SEARCH_CONFIG.FLEE_COMMIT
+        };
+        const dx = this.x - x;
+        const dy = this.y - y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) ai.heading = {
+            x: dx / len,
+            y: dy / len
+        };
+    },
+
+    // Wird einmal pro Tick nach der Bewegung aufgerufen: erkennt A,B,A,B,... und erzwingt einen Ausbruch
+    trackOscillation() {
+        const ai = this.getAI();
+        const trail = ai.trail;
+        trail.push(this.x * 1000 + this.y);
+        if (trail.length > SEARCH_CONFIG.TRAIL_LENGTH) trail.shift();
+        if (trail.length < SEARCH_CONFIG.TRAIL_LENGTH || ai.breakout) return;
+        if (trail[0] === trail[1]) return;
+        for (let i = 2; i < trail.length; i++) {
+            if (trail[i] !== trail[i - 2]) return;
+        }
+        this.startBreakout();
+    },
+
+    startBreakout() {
+        const ai = this.getAI();
+        const cfg = SEARCH_CONFIG;
+        let best = null;
+        for (let i = 0; i < 8; i++) {
+            const angle = Math.random() * 2 * Math.PI;
+            const tx = clampInt(this.x + Math.cos(angle) * 45, cfg.EDGE_MARGIN, WIDTH - 1 - cfg.EDGE_MARGIN);
+            const ty = clampInt(this.y + Math.sin(angle) * 45, cfg.EDGE_MARGIN, HEIGHT - 1 - cfg.EDGE_MARGIN);
+            const tile = grid[ty][tx];
+            if (tile === 'lava' || tile === 'trap') continue;
+            const score = this.unseenAt(tx, ty) + Math.random() * 0.5;
+            if (!best || score > best.score) best = {
+                tx,
+                ty,
+                score
+            };
+        }
+        if (!best) return;
+        ai.breakout = {
+            tx: best.tx,
+            ty: best.ty,
+            until: simTick + cfg.BREAKOUT_TICKS
+        };
+        ai.plan = null;
+        ai.planPos = null;
+        ai.fleeFrom = null;
+        ai.heading = null;
+        ai.trail.length = 0;
+    },
+
+    // true, wenn der Tribut in diesem Tick dem Ausbruchsziel folgt
+    breakoutStep() {
+        const ai = this.getAI();
+        const b = ai.breakout;
+        if (!b) return false;
+        if (simTick >= b.until || (this.x === b.tx && this.y === b.ty)) {
+            ai.breakout = null;
+            ai.trail.length = 0;
+            return false;
+        }
+        this.moveTowards(b.tx, b.ty);
+        return true;
     },
 
     // Aggressive Tribute mit viel Leben gehen auf gesichtete Nicht-Freunde los
