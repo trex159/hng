@@ -78,28 +78,6 @@ function setUIForState(state) {
     }
 }
 
-function saveArena() {
-    const arenaCode = JSON.stringify(grid);
-    return btoa(arenaCode);
-}
-
-function saveTributes() {
-    // Exportiere auch Freunde-IDs
-    const tributeCode = JSON.stringify(tributes.map(t => ({
-        ...t,
-        friends: t.friends ? [...t.friends] : []
-    })));
-    return btoa(tributeCode);
-}
-
-function showArenaCode() {
-    document.getElementById('load-code').value = saveArena();
-}
-
-function showTributesCode() {
-    document.getElementById('load-code').value = saveTributes();
-}
-
 function toggleProfiles() {
     if (showprofilelist) {
         document.getElementById('profiles-container').style.display = 'none';
@@ -110,56 +88,6 @@ function toggleProfiles() {
     }
 }
 
-function loadFromCode() {
-    const code = document.getElementById('load-code').value.trim();
-    if (!code) return;
-    try {
-        const decoded = atob(code);
-        const data = JSON.parse(decoded);
-        // ...im try-Block von loadFromCode()
-        if (Array.isArray(data) && data[0] && data[0].name !== undefined) {
-            // Tribute laden
-            tributes = data.map(t => {
-                // Falls Tribute plain object, in Tribute-Objekt umwandeln
-                let tr = new Tribute(t.id, {
-                    x: t.x,
-                    y: t.y
-                });
-                Object.assign(tr, t);
-                // Sicherstellen, dass social-Struktur existiert
-                tr.social = tr.social || {
-                    trust: {},
-                    fear: {},
-                    hostility: {}
-                };
-                // Freunde initial mit hohem Vertrauen versehen
-                if (Array.isArray(tr.friends)) {
-                    tr.friends.forEach(fid => {
-                        tr.social.trust[fid] = 1;
-                    });
-                }
-                // Freunde als Array von IDs sicherstellen
-                tr.friends = Array.isArray(t.friends) ? t.friends.slice() : [];
-                if (!tr.weapon) tr.weapon = null;
-                if (!tr.weakWeapons) tr.weakWeapons = [];
-                tr.social.bond = tr.social.bond || {};
-                tr.lastCombatTick = 0;
-                tr.healthAcc = 0;
-                return tr;
-            });
-            updateProfiles();
-            updateStatsTable();
-        } else {
-            // Arena laden (alte Codes anderer Größe werden hochskaliert)
-            if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('keine Arena');
-            grid = normalizeLoadedGrid(data);
-            drawGrid();
-        }
-    } catch (e) {
-        alert('Ungültiger Code.');
-    }
-    document.getElementById('load-code').value = '';
-}
 // Skaliert eine geladene Arena (beliebiger Größe, z. B. alte 100x100-Codes) per Nearest-Neighbour auf WIDTH x HEIGHT
 function normalizeLoadedGrid(data) {
     const srcH = data.length;
@@ -473,7 +401,7 @@ function createTributes(num) {
         // Für jeden Tribut: 0-2 zufällige Freunde (keine Selbstfreundschaft, symmetrisch)
         for (let i = 0; i < num; i++) {
             let t = tributes[i];
-            let possibleFriends = tributes.filter(o => o.id !== t.id);
+            let possibleFriends = tributes.filter(o => o.id !== t.id && !t.friends.includes(o.id)); // bereits befreundete nicht erneut wählen, sonst endet die while-Schleife unten nie
             let friendCount = randomInt(0, Math.min(2, possibleFriends.length));
             let chosen = [];
             while (chosen.length < friendCount) {
