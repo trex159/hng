@@ -68,7 +68,7 @@ const SimStats = (() => {
     }) {
         if (!running || !tribute) return;
         // Wie im Log: bei Kampf zählt der Killer, sonst der letzte Angreifer
-        const responsible = reason === 'Kampf' ? (killer || tribute.lastAttacker) : null;
+        const responsible = reason === 'combat' ? (killer || tribute.lastAttacker) : null;
         deathTick.set(tribute.id, simTick);
         deaths.push({
             id: tribute.id,
@@ -88,7 +88,8 @@ const SimStats = (() => {
     function causeOf(id) {
         const d = deaths.find(entry => entry.id === id);
         if (!d || !d.reason) return null;
-        return d.killerName ? `${d.reason} durch ${d.killerName}` : d.reason;
+        if (d.reason === 'combat' && d.killerName) return I18N.t('death.combatBy', { killer: d.killerName });
+        return I18N.t('death.' + d.reason);
     }
 
     // Plätze 1 bis 3. Überlebende stehen vor allen Toten; wer im selben Zeitpunkt stirbt, teilt sich

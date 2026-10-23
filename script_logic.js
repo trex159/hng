@@ -225,7 +225,7 @@ class Tribute {
                 this.moveAwayFrom(nearbyAnimal.x, nearbyAnimal.y);
                 // Optional: Log für ängstliche Tribute
                 if (this.behavior === 'ängstlich') {
-                    logInfo(`${this.name} flieht vor einem Wildtier!`);
+                    logInfo(I18N.t('log.fleesAnimal', { name: this.name }));
                 }
                 return; // Wichtig: Rückzug beendet den Move-Tick
             }
@@ -351,7 +351,7 @@ class Tribute {
                     const warnedAbout = tributes.find(t => t.id === parseInt(otherId));
                     // nur melden, wenn der Freund dadurch wirklich etwas Neues erfährt
                     if (warnedAbout && fearValue > knownFear + 0.01) {
-                        logInfo(`${this.name} warnt ${friend.name} vor ${warnedAbout.name}`);
+                        logInfo(I18N.t('log.warns', { name: this.name, friend: friend.name, other: warnedAbout.name }));
                     }
                 }
             }
@@ -409,7 +409,7 @@ class Tribute {
         } else {
             this.health += whole;
             this.damageTaken -= whole;
-            if (this.health <= 0) this.die('erfroren');
+            if (this.health <= 0) this.die('cold');
         }
     }
     getCurrentTile() {
@@ -432,7 +432,7 @@ class Tribute {
             // falls immer noch außerhalb (NaN), töten
             if (this.x < 0 || this.x >= WIDTH || this.y < 0 || this.y >= HEIGHT || isNaN(this.x) || isNaN(this.y)) {
                 if (this.alive) {
-                    this.die('verunglückt');
+                    this.die('accident');
                 }
                 return;
             }
@@ -441,19 +441,19 @@ class Tribute {
         if (tileType === 'lava') {
             // Sofortiger Tod durch Lava
             if (this.alive) {
-                this.die('Lava');
+                this.die('lava');
             }
             return;
         }
         if (tileType === 'trap') {
             if (this.alive && Math.random() < 0.4) { // 40% Chance, in Falle sofort zu sterben
-                this.die('in eine tödliche Falle getappt');
+                this.die('trapInstant');
             } else {
-                this.health -= RandomInt(15, 65); // Zufälliger Schaden zwischen 15 und 65
+                this.health -= randomInt(15, 65); // Zufälliger Schaden zwischen 15 und 65
                 if (this.health <= 0) {
-                    this.die('von einer Falle getötet');
+                    this.die('trap');
                 } else {
-                    logInfo(`${this.name} wurde in einer Falle verletzt (${this.health} Gesundheit verbleiben)!`);
+                    logInfo(I18N.t('log.trapHurt', { name: this.name, health: this.health }));
                 }
             }
             return;
@@ -496,7 +496,7 @@ class Tribute {
                         this.weapon = {
                             power: w.power
                         };
-                        logInfo(`${this.name} hat eine starke Waffe gefunden (+${w.power} Schaden)!`);
+                        logInfo(I18N.t('log.strongWeapon', { name: this.name, power: w.power }));
                         weapons.splice(i, 1);
                         drawGrid();
                     }
@@ -507,7 +507,7 @@ class Tribute {
                         this.weakWeapons.push({
                             power: w.power
                         });
-                        logInfo(`${this.name} hat eine schwache Waffe gefunden (+${w.power} Schaden)!`);
+                        logInfo(I18N.t('log.weakWeapon', { name: this.name, power: w.power }));
                         weapons.splice(i, 1);
                         drawGrid();
                     }
@@ -663,7 +663,7 @@ class Tribute {
         const attacker = opponent.lastAttacker;
         if (attacker && attacker !== this && attacker.alive && !this.isFriend(attacker) // Nicht auf eigene Freunde losgehen
         ) {
-            logInfo(`${this.name} verteidigt ${opponent.name} und greift ${attacker.name} an!`);
+            logInfo(I18N.t('log.defends', { name: this.name, opponent: opponent.name, attacker: attacker.name }));
             this.fight(attacker);
         }
     }
@@ -675,7 +675,7 @@ class Tribute {
         let onlyFriendsLeft = aliveTributes.every(t => t === this || this.isFriend(t) || this.isFriendOfFriend(t));
         if (this.ängstlich && Math.random() < 0.5 && opponent.health + 20 > this.health) {
             this.moveAwayFrom(opponent.x, opponent.y);
-            logInfo(`${this.name} ist ängstlich und vermeidet den Kampf mit ${opponent.name}.`);
+            logInfo(I18N.t('log.avoidsFight', { name: this.name, opponent: opponent.name }));
             return;
         }
         // Freunde greifen sich nicht an, solange mehr als 2 Tribute leben und nicht nur Freunde übrig
@@ -687,7 +687,7 @@ class Tribute {
         }
         // Freund eines Freundes: tolerieren, solange gemeinsamer Freund in der Nähe und mehr als 2 leben und nicht nur Freunde übrig
         if (!onlyFriendsLeft && this.isFriendOfFriend(opponent) && aliveCount > 2 && Math.random() >= 0.5) {
-            logInfo(`${this.name} toleriert ${opponent.name} wegen gemeinsamer Freundschaft.`);
+            logInfo(I18N.t('log.tolerates', { name: this.name, opponent: opponent.name }));
             return;
         }
         // 1️⃣ Vertrauen prüfen: hohes Vertrauen verhindert Angriff (soziale Bindung)
@@ -700,19 +700,19 @@ class Tribute {
         // 2️⃣ Angst prüfen: bei hoher Angst zieht sich Tribut zurück
         const fearLevel = this.social.fear[opponent.id] || 0;
         if (fearLevel > 0.5 && Math.random() < fearLevel) {
-            logInfo(`${this.name} zieht sich vor ${opponent.name} zurück.`);
+            logInfo(I18N.t('log.retreats', { name: this.name, opponent: opponent.name }));
             this.moveAwayFrom(opponent.x, opponent.y);
             return;
         }
         //altersunterschied fürt zu rückzug
         const ageDiff = Math.abs(this.age - opponent.age);
         if (ageDiff >= 3 && fearLevel > 0.1 && !this.aggressive && Math.random() < (fearLevel + (ageDiff * 0.1) - 0.2) && opponent.health > (this.health + (fearLevel * 5))) {
-            logInfo(`${this.name} zieht sich vor ${opponent.name} zurück.`);
+            logInfo(I18N.t('log.retreats', { name: this.name, opponent: opponent.name }));
             this.moveAwayFrom(opponent.x, opponent.y);
             return;
         }
         if (opponent.attributes.beliebt && Math.random() < 0.5 && opponent.health >= this.health - 10 && opponent.damageDealt < this.damageDealt + 20) {
-            logInfo(`${this.name} zieht sich vor ${opponent.name} zurück.`);
+            logInfo(I18N.t('log.retreats', { name: this.name, opponent: opponent.name }));
             this.moveAwayFrom(opponent.x, opponent.y);
             return;
         }
@@ -721,7 +721,7 @@ class Tribute {
         let attackPower;
         if (hostilityLevel > 0.5) {
             attackPower = Math.round(this.calculateAttackPower(opponent) * (1 + hostilityLevel));
-            logInfo(`${this.name} ist wütend auf ${opponent.name} und greift mit erhöhter Kraft an!`);
+            logInfo(I18N.t('log.enraged', { name: this.name, opponent: opponent.name }));
         } else {
             attackPower = Math.round(this.calculateAttackPower(opponent))
         }
@@ -741,11 +741,11 @@ class Tribute {
         opponent.social.fear[this.id] = Math.min(1, (opponent.social.fear[this.id] || 0) + attackPower / 100 + (Math.random() * 0.25));
         this.social.hostility[opponent.id] = Math.min(1, (this.social.hostility[opponent.id] || 0) + 0.02 + Math.random() * 0.05);
         if (attackPower > 0) {
-            logAttack(`${this.name} greift ${opponent.name} an und fügt ${Math.round(attackPower)} Schaden zu!`);
+            logAttack(I18N.t('log.attacks', { name: this.name, opponent: opponent.name, damage: Math.round(attackPower) }));
         }
         if (opponent.health <= 0) {
             this.kills += 1;
-            opponent.die('Kampf', this);
+            opponent.die('combat', this);
         } else {
             opponent.counterAttack(this);
         }
@@ -769,11 +769,11 @@ class Tribute {
                 kind: 'counter'
             });
             if (attackPower > 0) {
-                logAttack(`${this.name} kontert gegen ${attacker.name} und fügt ${attackPower} Schaden zu!`);
+                logAttack(I18N.t('log.counters', { name: this.name, attacker: attacker.name, damage: attackPower }));
             }
             if (attacker.health <= 0) {
                 this.kills += 1;
-                attacker.die('Kampf', this);
+                attacker.die('combat', this);
             }
         }
     }
@@ -785,16 +785,16 @@ class Tribute {
             reason,
             killer
         });
-        if (reason === 'Kampf' && (killer || this.lastAttacker)) {
-            const killerName = (killer ? killer.name : (this.lastAttacker ? this.lastAttacker.name : 'Unbekannt'));
-            logDeath(`${this.name} ist gestorben (${reason} durch ${killerName})`);
+        if (reason === 'combat' && (killer || this.lastAttacker)) {
+            const killerName = (killer ? killer.name : (this.lastAttacker ? this.lastAttacker.name : I18N.t('death.unknownKiller')));
+            logDeath(I18N.t('log.died', { name: this.name, reason: I18N.t('death.combatBy', { killer: killerName }) }));
         } else {
-            logDeath(`${this.name} ist gestorben (${reason})`);
+            logDeath(I18N.t('log.died', { name: this.name, reason: I18N.t('death.' + reason) }));
         }
         updateTributeProfile(this);
         updateStatsTable();
         // Schlechtes Karma: Freunde des Opfers vertrauen dem Killer weniger, Freundschaften können zerbrechen
-        const responsible = reason === 'Kampf' ? (killer || this.lastAttacker) : null;
+        const responsible = reason === 'combat' ? (killer || this.lastAttacker) : null;
         if (responsible instanceof Tribute) processKillKarma(responsible, this);
     }
     calculateAttackPower(opponent) {
@@ -819,7 +819,7 @@ class Tribute {
         }
         if (this.gender === 'männlich' && opponent.gender === 'weiblich' && opponent.health + 20 < this.health && !this.aggressive) {
             if (Math.random() < 0.2) { // 20% Chance, zurückzuweichen
-                logInfo(`${this.name} versucht ${opponent.name} aus dem Weg zu gehen.`);
+                logInfo(I18N.t('log.stepsAside', { name: this.name, opponent: opponent.name }));
                 this.moveAwayFrom(opponent.x, opponent.y);
                 return 0;
             }
@@ -843,7 +843,7 @@ class Tribute {
         }
         //Nicht selbst zum Killer werden wollen
         if (aliveCount >= 5 && !this.aggressive && Math.random() >= 0.8 && this.health > (opponent.health * 1.2)) {
-            logInfo(`${this.name} versucht ${opponent.name} aus dem Weg zu gehen.`)
+            logInfo(I18N.t('log.stepsAside', { name: this.name, opponent: opponent.name }))
             return 0;
         }
         // verletzte machen weniger schaden
@@ -1070,10 +1070,10 @@ class Animal {
             kind: 'animal'
         });
         if (damage > 0) {
-            logAttack(`Wildtier greift ${tribute.name} an und fügt ${damage} Schaden zu!`);
+            logAttack(I18N.t('log.animalAttacks', { name: tribute.name, damage }));
         }
         if (tribute.health <= 0) {
-            tribute.die('von einem Wildtier getötet');
+            tribute.die('animal');
         } else {
             // Tribut wehrt sich gegen das Tier
             tribute.counterAttackAnimal(this);
@@ -1086,7 +1086,7 @@ class Animal {
             SimEvents.emit('animalDeath', {
                 animal: this
             });
-            logInfo(`Ein Wildtier wurde von ${attacker.name} getötet!`); // Info statt Tod Log für Tiere
+            logInfo(I18N.t('log.animalKilled', { name: attacker.name })); // Info statt Tod Log für Tiere
         }
     }
     findNearbyLava() {
@@ -1109,6 +1109,6 @@ Tribute.prototype.counterAttackAnimal = function (animal) {
     });
     animal.takeDamage(attackPower, this);
     if (attackPower > 0) {
-        logAttack(`${this.name} wehrt sich gegen ein Wildtier und fügt ${attackPower} Schaden zu!`);
+        logAttack(I18N.t('log.fightsAnimal', { name: this.name, damage: attackPower }));
     }
 };

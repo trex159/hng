@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title data-i18n="page.title">Hungerspiele Simulation</title>
+    <link rel="icon" type="icon" href="always same/Icon.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="loader">
+        <div class="loader-spinner"></div>
+        <p data-i18n="loader.text">Lade Simulation</p>
+    </div>
+    <h1 data-i18n-html="page.heading">Hungerspiele Simulation<br>-inoffizielles Fanprojekt-</h1>
+    <div id="heal-menu" style="display:none;"></div>
+    <div id="game-container">
+        <canvas id="arena" width="500" height="500"></canvas>
+        <div id="controls">
+            <div class="pre-Game">
+                <button onclick="startSimulation()" data-i18n="ctrl.start">Start Simulation</button>
+                <button onclick="generateArena()" data-i18n="ctrl.generateArena">Arena zufällig generieren</button>
+                <input type="text" id="arena-seed" placeholder="Seed (optional)" data-i18n-attr="placeholder:ctrl.seed" style="width:110px;">
+                <label><span data-i18n="ctrl.tributeCount">Anzahl Tribute:</span> <input type="number" min="5" max="48" value="24" id="tribute-count">
+                </label>
+                <button onclick="saveProfiles()" data-i18n="ctrl.save">Speichern</button>
+            </div>
+            <div class="mid-game">
+                <div id="game-clock"><span data-i18n="ctrl.clock">Spielzeit:</span> <span id="game-clock-value">Zeitpunkt 0</span>
+                </div>
+                <div id="live-count"><span data-i18n="ctrl.alive">Verbleibende Tribute:</span> <span id="live-count-number">-</span>
+                </div>
+                <button onclick="pauseSimulation()" data-i18n="ctrl.pause">Pause/Fortsetzen</button>
+                <button onclick="stopSimulation()" data-i18n="ctrl.endgame">Endspiel</button>
+                <button id="endgame-pause-btn" onclick="toggleEndgamePause()">Endspiel pausieren</button>
+                <label><span data-i18n="ctrl.speed">Geschwindigkeit:</span> <input type="range" min="1" max="30" value="5" id="speed" />
+                </label>
+                <button onclick="showHealMenu()" data-i18n="ctrl.heal">Tribut Heilung senden</button>
+                <label><span data-i18n="ctrl.weather">Wetter:</span> <select onchange="setWeather(this.value)">
+                        <option value="clear" data-i18n="weather.clear">Gutes Wetter</option>
+                        <option value="fog" data-i18n="weather.fog">Nebel</option>
+                        <option value="rain" data-i18n="weather.rain">Regen</option>
+                        <option value="snow" data-i18n="weather.snow">Schnee</option>
+                    </select>
+                </label>
+                <button onclick="spawnAnimal()" data-i18n="ctrl.animal">Wildtier loslassen</button>
+                <label><span data-i18n="ctrl.animalHp">Tier-Leben:</span> <input type="number" id="animal-hp" min="1" max="500" value="60" style="width:60px;">
+                </label>
+                <label><span data-i18n="ctrl.animalDamage">Tier-Schaden:</span> <input type="number" id="animal-dmg-min" min="0" max="100" value="5"
+                        style="width:50px;"> <span data-i18n="common.to">bis</span>
+                    <input type="number" id="animal-dmg-max" min="0" max="100" value="20" style="width:50px;">
+                </label>
+                <label><input type="checkbox" id="animal-pick"> <span data-i18n="ctrl.animalPick">Position per Klick wählen</span></label>
+            </div>
+            <div class="arena-editor">
+                <select id="draw-mode">
+                    <option value="grass" data-i18n="terrain.grass">Wiese</option>
+                    <option value="water" data-i18n="terrain.water">Wasser</option>
+                    <option value="lava" data-i18n="terrain.lava">Lava</option>
+                    <option value="forest" data-i18n="terrain.forest">Wald</option>
+                    <option value="rock" data-i18n="terrain.rock">Felsen</option>
+                    <option value="trap" data-i18n="terrain.trap">Falle</option>
+                </select>
+                <label><span data-i18n="ctrl.brush">Pinselgröße:</span> <input type="range" min="1" max="20" value="5" id="brush-size">
+                </label>
+            </div>
+            <div class="exitmode">
+                <button onclick="location.reload(true)" data-i18n="ctrl.again">Nochmal!</button>
+            </div>
+            <button id="show-profiles-btn" onclick="toggleProfiles()" data-i18n="ctrl.toggleProfiles">Profile anzeigen/ausblenden</button>
+        </div>
+    </div>
+    <section id="profiles-section">
+        <div id="profiles-container"> </div> <!-- per js geregelt -->
+    </section>
+    <!---- Log-Filterleiste ---->
+    <div id="log-filter-bar">
+        <button class="log-filter-btn active" data-type="all" data-i18n="logcat.all">Alle</button>
+        <button class="log-filter-btn" data-type="attack" data-i18n="logcat.attack">Angriffe</button>
+        <button class="log-filter-btn" data-type="death" data-i18n="logcat.death">Tode</button>
+        <button class="log-filter-btn" data-type="info" data-i18n="logcat.info">Info</button>
+    </div>
+    <div id="log"></div>
+    <div id="code-input">
+        <input type="text" id="load-code" placeholder="Arena- oder Tributen-Code eingeben" data-i18n-attr="placeholder:code.placeholder">
+        <button onclick="loadFromCode()" data-i18n="code.load">eingegebenen Code Laden</button>
+        <button onclick="showArenaCode()" data-i18n="code.showArena">Arena-Code anzeigen</button>
+        <button onclick="showTributesCode()" data-i18n="code.showTributes">Tributen-Code anzeigen</button>
+    </div>
+    <section id="miniminiklein">
+        <h2 data-i18n="small.title">Dein Bildschirm ist zu winzig!</h2>
+        <p data-i18n-html="small.text">Die Simulation wurde für größere (Breiter als 1000 Pixel und höher als 450 Pixel) Bildschirme ausgelegt.</p>
+    </section>
+    <footer>
+        <p data-i18n="footer.version">Aktuelle Version HNG 11.1</p>
+        <p class="inspiration" data-i18n-html="footer.inspiration">
+            <strong>Inspiration:</strong> Dieses Projekt ist inspiriert von der <em>"Die Tribute von Panem"</em>-Reihe
+            von Suzanne Collins.
+        </p>
+        <a href="Disclaimer.html" data-i18n="footer.disclaimer">Zum Disclaimer</a>
+        <p class="small muted" data-i18n-html="footer.copyright">
+            © 2025 / 2026 — Hungerspiele Simulation (Fanprojekt). <a href="licence">Lizenz</a> · Nutzung auf eigene Verantwortung.
+        </p>
+    </footer>
+    <script src="script_i18n.js"></script>
+    <script src="lang_de.js"></script>
+    <script src="lang_en.js"></script>
+    <script src="script_events.js"></script>
+    <script src="script_logic.js"></script>
+    <script src="script_time.js"></script>
+    <script src="script_weather.js"></script>
+    <script src="script_social.js"></script>
+    <script src="script_search.js"></script>
+    <script src="script_layout.js"></script>
+    <script src="script_render.js"></script>
+    <script src="script_fx.js"></script>
+    <script src="script_stats.js"></script>
+    <script src="script_stats_ui.js"></script>
+    <script src="script_fullscreen.js"></script>
+    <script src="script_arena.js"></script>
+    <script src="script_logfilter.js"></script>
+    <script src="script.js"></script>
+    <script src="script_codes.js"></script>
+</body>
+
+</html>

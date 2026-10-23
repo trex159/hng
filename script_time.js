@@ -8,18 +8,18 @@
 
 // Ausführlich, z. B. "Zeitpunkt 42" (Anzeige über der Arena)
 function formatGameTime(tick = simTick) {
-    return `Zeitpunkt ${tick}`;
+    return I18N.t('time.long', { n: tick });
 }
 
 // Kurz, z. B. "Zp 42" (Log-Präfix und Zeitspannen)
 function formatGameTimeShort(tick = simTick) {
-    return `Zp ${tick}`;
+    return I18N.t('time.short', { n: tick });
 }
 
 // Abstand zwischen zwei Zeitpunkten, z. B. "30 Zeitpunkte"
 function formatGameDuration(fromTick, toTick) {
     const n = Math.max(0, toTick - fromTick);
-    return n === 1 ? '1 Zeitpunkt' : `${n} Zeitpunkte`;
+    return I18N.t('time.duration', { n });
 }
 
 function updateClockDisplay() {
@@ -31,3 +31,4 @@ function updateClockDisplay() {
 function advanceGameClock() {
     updateClockDisplay();
 }
+I18N.onChange(updateClockDisplay);

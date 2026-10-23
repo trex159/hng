@@ -35,7 +35,7 @@ let showprofilelist = true;
 const MAX_VIEW_DISTANCE = 25;
 const LAVA_SPEED = 0.3 * (ARENA_SIZE / LEGACY_ARENA_SIZE);
 
-function RandomInt(min, max) {
+function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 // Hilfsfunktion: sichtbar/nicht sichtbar schalten je nach State
@@ -171,7 +171,7 @@ function setUltraMode(on) {
         ultraFxBackup = null;
     }
     document.body.classList.toggle('ultra-mode', on);
-    logEvent(on ? 'Der Gamemaker aktiviert den Ultra-Modus.' : 'Der Gamemaker beendet den Ultra-Modus.', 'info');
+    logEvent(I18N.t(on ? 'log.ultraOn' : 'log.ultraOff'), 'info');
     updateClockDisplay();
 }
 // Doppelklick auf Pause (Hauptmenü und Vollbild) schaltet den Ultra-Modus um
@@ -294,7 +294,7 @@ function checkForWinner() {
     if (!lavaStart && !endgamePaused && (aliveTributes.length <= 3 || lavashouldstart)) {
         if (!lavashouldstart) {
             lavashouldstart = true;
-            logInfo("Die Tribute werden zum Zentrum der Arena gezwungen!");
+            logInfo(I18N.t('log.driveToCenter'));
             evilnumberoflava = 0; // Reset counter when starting
         }
         // Tribute zum Zentrum bewegen
@@ -308,13 +308,13 @@ function checkForWinner() {
             animals = [];
             const spawnBtn = document.querySelector('button[onclick="spawnAnimal()"]');
             if (spawnBtn) spawnBtn.disabled = true;
-            logWin("Das Endspiel beginnt! Alle Wildtiere verschwinden.");
+            logWin(I18N.t('log.endgameStart'));
             drawGrid();
         }
     }
     if (aliveTributes.length <= 1 && !winnerDeclared) {
         winnerDeclared = true;
-        logWin(aliveTributes.length === 1 ? `${aliveTributes[0].name} hat gewonnen!` : `Niemand hat überlebt.`);
+        logWin(aliveTributes.length === 1 ? I18N.t('log.winner', { name: aliveTributes[0].name }) : I18N.t('log.noSurvivor'));
         simulationRunning = false;
         setUIForState('stopped');
         SimEvents.emit('simEnd', {
@@ -325,9 +325,14 @@ function checkForWinner() {
 // Gamemaker: Endspiel (Zusammentreiben + Lava-Fortschritt) anhalten bzw. fortsetzen
 function toggleEndgamePause() {
     endgamePaused = !endgamePaused;
+    updateEndgameButton();
+    logEvent(I18N.t(endgamePaused ? 'log.endgameHalted' : 'log.endgameResumed'), 'info');
+}
+
+// Beschriftung des Endspiel-Pause-Knopfs (hängt vom Zustand ab, daher nicht per data-i18n)
+function updateEndgameButton() {
     const btn = document.getElementById('endgame-pause-btn');
-    if (btn) btn.textContent = endgamePaused ? 'Endspiel fortsetzen' : 'Endspiel pausieren';
-    logEvent(endgamePaused ? 'Der Gamemaker hält das Endspiel an.' : 'Der Gamemaker setzt das Endspiel fort.', 'info');
+    if (btn) btn.textContent = I18N.t(endgamePaused ? 'ctrl.endgameResume' : 'ctrl.endgamePause');
 }
 
 function advanceLava() {
@@ -427,9 +432,6 @@ function createAnimals(num) {
     }, () => new Animal());
 }
 
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
 canvas.addEventListener('mousedown', function () {
     if (!simulationRunning) drawing = true;
 });
@@ -487,7 +489,7 @@ function spawnAnimal(x, y) {
             tries++;
         } while (grid[y][x] === 'lava' && tries < maxTries);
         if (tries >= maxTries) {
-            alert("Kein Platz für ein Wildtier gefunden!");
+            alert(I18N.t('alert.noAnimalSpot'));
             return;
         }
     } else if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT || grid[y][x] === 'lava') {
@@ -549,31 +551,33 @@ function updateProfiles() {
             });
             friendsHtml += `</div>`;
         }
+        const tr = I18N.t;
+        const opt = (value, label, current) => `<option value="${value}" ${current === value ? 'selected' : ''}>${label}</option>`;
         profileDiv.innerHTML = `
-            <h3>Tribut ${tribute.id}</h3>
+            <h3>${tr('tribute.title', { id: tribute.id })}</h3>
             <div class="tribute-info">
-                <label>Name: <input type="text" value="${tribute.name}" ${profilesLocked ? 'disabled' : ''}></label>
-                <label>Alter: <input type="number" value="${tribute.age}" min="12" max="18" ${profilesLocked ? 'disabled' : ''}></label>
-                <label>Geschlecht: 
+                <label>${tr('tribute.name')} <input type="text" value="${tribute.name}" ${profilesLocked ? 'disabled' : ''}></label>
+                <label>${tr('tribute.age')} <input type="number" value="${tribute.age}" min="12" max="18" ${profilesLocked ? 'disabled' : ''}></label>
+                <label>${tr('tribute.gender')} 
                     <select ${profilesLocked ? 'disabled' : ''}>
-                        <option value="männlich" ${tribute.gender === 'männlich' ? 'selected' : ''}>Männlich</option>
-                        <option value="weiblich" ${tribute.gender === 'weiblich' ? 'selected' : ''}>Weiblich</option>
+                        ${opt('männlich', tr('gender.männlich'), tribute.gender)}
+                        ${opt('weiblich', tr('gender.weiblich'), tribute.gender)}
                     </select>
                 </label>
-                <label>Attribute: 
-                    <input type="checkbox" ${tribute.attributes.stark ? 'checked' : ''} ${profilesLocked ? 'disabled' : ''}> Stark
-                    <input type="checkbox" ${tribute.attributes.schlau ? 'checked' : ''} ${profilesLocked ? 'disabled' : ''}> Schlau
-                    <input type="checkbox" ${tribute.attributes.beliebt ? 'checked' : ''} ${profilesLocked ? 'disabled' : ''}> Beliebt
+                <label>${tr('tribute.attributes')} 
+                    <input type="checkbox" ${tribute.attributes.stark ? 'checked' : ''} ${profilesLocked ? 'disabled' : ''}> ${tr('attr.stark')}
+                    <input type="checkbox" ${tribute.attributes.schlau ? 'checked' : ''} ${profilesLocked ? 'disabled' : ''}> ${tr('attr.schlau')}
+                    <input type="checkbox" ${tribute.attributes.beliebt ? 'checked' : ''} ${profilesLocked ? 'disabled' : ''}> ${tr('attr.beliebt')}
                 </label>
-                <label>Verhalten: 
+                <label>${tr('tribute.behavior')} 
                     <select ${profilesLocked ? 'disabled' : ''}>
-                        <option value="aggressiv" ${tribute.behavior === 'aggressiv' ? 'selected' : ''}>Aggressiv</option>
-                        <option value="defensiv" ${tribute.behavior === 'defensiv' ? 'selected' : ''}>Defensiv</option>
-                        <option value="ängstlich" ${tribute.behavior === 'ängstlich' ? 'selected' : ''}>Ängstlich</option>
+                        ${opt('aggressiv', tr('behavior.aggressiv'), tribute.behavior)}
+                        ${opt('defensiv', tr('behavior.defensiv'), tribute.behavior)}
+                        ${opt('ängstlich', tr('behavior.ängstlich'), tribute.behavior)}
                     </select>
                 </label>
-                <label>Farbe: <input type="color" value="${tribute.color}" ${profilesLocked ? 'disabled' : ''}></label>
-                <div><b>Freunde:</b>${friendsHtml}</div>
+                <label>${tr('tribute.color')} <input type="color" value="${tribute.color}" ${profilesLocked ? 'disabled' : ''}></label>
+                <div><b>${tr('tribute.friends')}</b>${friendsHtml}</div>
             </div>
         `;
         profilesContainer.appendChild(profileDiv);
@@ -637,7 +641,7 @@ function adjustTributeCount() {
     while (tributes.length < desiredCount) {
         tributes.push({
             id: tributes.length + 1,
-            name: `Tribut ${tributes.length + 1}`,
+            name: I18N.t('tribute.default', { n: tributes.length + 1 }),
             age: 14 + Math.floor(Math.random() * 5),
             gender: 'männlich',
             attributes: {
@@ -754,7 +758,13 @@ function detectRepeatedPattern() {
 
         function updateSummary() {
             const s = activePatternState;
-            summary.textContent = `Wiederholte Ereignisfolge von ${formatGameTimeShort(s.startTick)} ` + `bis ${formatGameTimeShort(s.endTick)} (${formatGameDuration(s.startTick, s.endTick)}): ` + `${s.repetitions} weitere Durchläufe ausgeblendet. Muster: ${patternDescription}`;
+            summary.textContent = I18N.t('log.repeated', {
+                from: formatGameTimeShort(s.startTick),
+                to: formatGameTimeShort(s.endTick),
+                duration: formatGameDuration(s.startTick, s.endTick),
+                count: s.repetitions,
+                pattern: patternDescription
+            });
         }
         updateSummary();
         log.appendChild(summary);
@@ -869,9 +879,10 @@ function loadVorlagenList() {
     const select = document.createElement('select');
     select.id = 'vorlagen-select';
     select.style.marginRight = '8px';
-    select.innerHTML = `<option value="">Vorlage wählen</option>` + vorlagen.map(v => `<option value="${v.name}" data-type="${v.type}">${v.name}</option>`).join('');
+    select.innerHTML = `<option value="" data-i18n="template.choose">${I18N.t('template.choose')}</option>` + vorlagen.map(v => `<option value="${v.name}" data-type="${v.type}">${v.name}</option>`).join('');
     const btn = document.createElement('button');
-    btn.textContent = 'Vorlage laden';
+    btn.textContent = I18N.t('template.load');
+    btn.dataset.i18n = 'template.load';
     btn.setAttribute('vorlagen-btn', '1');
     btn.onclick = function () {
         const file = select.value;
@@ -882,12 +893,19 @@ function loadVorlagenList() {
     container.insertBefore(select, btn);
 }
 
+// Sprachwechsel: alles neu aufbauen, was per Script erzeugt wird (Profile, Heilmenü, Knöpfe)
+I18N.onChange(() => {
+    updateProfiles();
+    updateHealMenu();
+    updateEndgameButton();
+});
+
 function loadVorlageFile(filename, type) {
     fetch('vorlagen/' + filename).then(res => res.text()).then(text => {
         // Dateiinhalt ist ein normaler Code (Base64)
         document.getElementById('load-code').value = text.trim();
         loadFromCode();
-    }).catch(() => alert('Vorlage konnte nicht geladen werden.'));
+    }).catch(() => alert(I18N.t('template.failed')));
 }
 document.addEventListener('DOMContentLoaded', () => {
     createStatsPanel();
@@ -899,6 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateProfiles();
     // // Vorlagen-Auswahl einfügen
     loadVorlagenList();
+    updateEndgameButton();
 });
 document.getElementById('tribute-count').addEventListener('change', function () {
     createTributes(parseInt(this.value));
@@ -917,14 +936,14 @@ function hideHealMenu() {
 function updateHealMenu() {
     const menu = document.getElementById('heal-menu');
     if (!menu || menu.style.display === 'none') return;
-    let html = `<h3>Tribut Heilung senden</h3>`;
+    let html = `<h3>${I18N.t('heal.title')}</h3>`;
     tributes.forEach(t => {
-        let btnText = t.alive ? `${t.name} (Leben: ${Math.round(t.health)})` : `${t.name} (verstorben)`;
+        let btnText = t.alive ? I18N.t('heal.alive', { name: t.name, health: Math.round(t.health) }) : I18N.t('heal.dead', { name: t.name });
         html += `<button class="heal-tribute-btn"
             ${t.alive ? '' : 'disabled'}
             onclick="healTribute(${t.id})">${btnText}</button>`;
     });
-    html += `<button class="heal-close-btn" onclick="hideHealMenu()">Schließen</button>`;
+    html += `<button class="heal-close-btn" onclick="hideHealMenu()">${I18N.t('heal.close')}</button>`;
     menu.innerHTML = html;
 }
 // Heilungsfunktion
@@ -938,7 +957,7 @@ function healTribute(id) {
         tribute: t,
         amount: t.health - healthBefore
     });
-    logInfo(`${t.name} wurde geheilt (+${heal} Leben)!`);
+    logInfo(I18N.t('log.healed', { name: t.name, amount: heal }));
     updateProfiles();
     updateStatsTable();
     updateHealMenu();
@@ -981,7 +1000,7 @@ function stopSimulation() {
         animals = [];
         const spawnBtn = document.querySelector('button[onclick="spawnAnimal()"]');
         if (spawnBtn) spawnBtn.disabled = true;
-        logInfo("Das Endspiel wurde manuell gestartet! Alle Wildtiere verschwinden.");
+        logInfo(I18N.t('log.endgameManual'));
         drawGrid();
     }
 }
@@ -1025,13 +1044,13 @@ function checkTributesOnCanvas() {
     if (outOfBounds.length === living.length) {
         // Alle sterben durch "verunglückt"
         outOfBounds.forEach(t => {
-            t.die('verunglückt');
+            t.die('accident');
         });
         return;
     }
     // Sonst: alle betroffenen Tribute sterben
     outOfBounds.forEach(t => {
-        t.die('verunglückt');
+        t.die('accident');
     });
     updateProfiles();
     updateStatsTable();

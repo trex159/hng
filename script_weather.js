@@ -12,25 +12,33 @@
 
 const WEATHER = {
     clear: {
-        label: 'Gutes Wetter',
+        get label() {
+            return I18N.t('weather.clear');
+        },
         viewFactor: 1,
         regenFactor: 1,
         cold: false
     },
     fog: {
-        label: 'Nebel',
+        get label() {
+            return I18N.t('weather.fog');
+        },
         viewFactor: 0.4,
         regenFactor: 1,
         cold: false
     },
     rain: {
-        label: 'Regen',
+        get label() {
+            return I18N.t('weather.rain');
+        },
         viewFactor: 0.75,
         regenFactor: 0.5,
         cold: false
     },
     snow: {
-        label: 'Schnee',
+        get label() {
+            return I18N.t('weather.snow');
+        },
         viewFactor: 0.5,
         regenFactor: 0,
         cold: true
@@ -65,7 +73,7 @@ function setWeather(type) {
     if (!WEATHER[type] || type === currentWeather) return;
     currentWeather = type;
     // logEvent statt logInfo: der Wiederholungsfilter von logInfo würde Wetterwechsel verschlucken
-    logEvent(`Der Gamemaker ändert das Wetter: ${WEATHER[type].label}.`, 'info');
+    logEvent(I18N.t('log.weatherChanged', { weather: WEATHER[type].label }), 'info');
     drawGrid();
 }
 

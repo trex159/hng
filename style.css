@@ -1393,3 +1393,57 @@ body.fs-active {
 #fs-bar input[type="number"] {
   width: 56px;
 }
+
+/* --------------------------------------------------------------------------
+   Sprachumschalter (script_i18n.js) und Pfade-Filter "Nur Lebende"
+   -------------------------------------------------------------------------- */
+#lang-switch {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(27, 11, 35, 0.85);
+  backdrop-filter: blur(6px);
+}
+
+#lang-switch button {
+  margin: 0;
+  padding: 3px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cream);
+  font: 700 12px var(--font-body);
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+#lang-switch button:hover {
+  background: var(--panel);
+}
+
+#lang-switch button.active {
+  background: var(--gold);
+  color: var(--night-deep);
+}
+
+body.fs-active #lang-switch {
+  display: none;
+}
+
+.stats-controls button.active {
+  background: var(--gold);
+  color: var(--night-deep);
+  border-color: var(--gold);
+}
+
+.path-chip.gone {
+  opacity: 0.35;
+  text-decoration: line-through;
+}

@@ -67,7 +67,7 @@ function breakFriendship(a, b, reason) {
         const ai = self.getAI();
         if (ai.leaderId === other.id) ai.leaderId = null;
     });
-    logInfo(`Die Freundschaft zwischen ${a.name} und ${b.name} zerbricht: ${reason}.`);
+    logInfo(I18N.t('log.friendshipBreaks', { a: a.name, b: b.name, reason }));
     updateProfiles();
 }
 
@@ -88,9 +88,9 @@ function processKillKarma(killer, victim) {
         const bondAfter = clamp01(witness.directBond(killer.id) - (0.15 + 0.6 * cared));
         witness.social.bond[killer.id] = bondAfter;
         if (bondAfter < BOND_BREAK_THRESHOLD || witness.social.hostility[killer.id] > 0.6) {
-            breakFriendship(witness, killer, `${killer.name} hat ${victim.name} getötet`);
+            breakFriendship(witness, killer, I18N.t('log.killedReason', { killer: killer.name, victim: victim.name }));
         } else {
-            logInfo(`${witness.name} vertraut ${killer.name} weniger, weil ${killer.name} ${victim.name} getötet hat.`);
+            logInfo(I18N.t('log.trustsLess', { witness: witness.name, killer: killer.name, victim: victim.name }));
         }
     }
 }

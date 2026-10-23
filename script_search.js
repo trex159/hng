@@ -83,7 +83,7 @@ function formGroup(a, b) {
     }
     follower.getAI().leaderId = leader.id;
     follower.setMode('follow', SEARCH_CONFIG.FOLLOW_LIFETIME);
-    logInfo(`${a.name} und ${b.name} schließen sich zusammen und suchen gemeinsam.`);
+    logInfo(I18N.t('log.groupUp', { a: a.name, b: b.name }));
     return true;
 }
 
@@ -255,12 +255,12 @@ Object.assign(Tribute.prototype, {
 
             const hostility = this.social.hostility[weak.id] || 0;
             if (this.isFriend(weak) && (bond < 0.22 || hostility > 0.6)) {
-                breakFriendship(this, weak, `${this.name} sieht in dem geschwächten ${weak.name} nur noch eine Last`);
+                breakFriendship(this, weak, I18N.t('log.burden', { name: this.name, weak: weak.name }));
                 this.social.hostility[weak.id] = Math.max(this.social.hostility[weak.id] || 0, 0.8);
                 weak.social.fear[this.id] = Math.max(weak.social.fear[this.id] || 0, 0.8);
                 this.setMode('attack', 50);
                 ai.targetId = weak.id;
-                logInfo(`${this.name} greift das geschwächte frühere Gruppenmitglied ${weak.name} an!`);
+                logInfo(I18N.t('log.attacksFormer', { name: this.name, weak: weak.name }));
                 return true;
             }
 
@@ -269,14 +269,14 @@ Object.assign(Tribute.prototype, {
                 ai.leaderId = null;
                 this.setMode('guard', randomInt(120, 200));
                 ai.guardId = weak.id;
-                logInfo(`${this.name} bleibt bei dem verletzten ${weak.name}, um ihn zu beschützen.`);
+                logInfo(I18N.t('log.guards', { name: this.name, weak: weak.name }));
                 return true;
             }
 
             // Bindung zu schwach: zurücklassen und eine Weile ignorieren
             ai.ignore[weak.id] = simTick + 300;
             if (ai.leaderId === weak.id) ai.leaderId = null;
-            logInfo(`${this.name} lässt den geschwächten ${weak.name} zurück.`);
+            logInfo(I18N.t('log.abandons', { name: this.name, weak: weak.name }));
         }
         return false;
     },
@@ -295,7 +295,7 @@ Object.assign(Tribute.prototype, {
         if (leader && this.health < cfg.WEAK_HEALTH && Math.random() < 0.7) {
             ai.leaderId = null;
             this.setMode('rest', randomInt(cfg.REST_MIN, cfg.REST_MAX));
-            logInfo(`${this.name} bleibt geschwächt zurück, um sich zu erholen.`);
+            logInfo(I18N.t('log.restsAlone', { name: this.name }));
             return true;
         }
         if (leader && ai.mode !== 'follow') {

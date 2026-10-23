@@ -91,7 +91,7 @@
         let pos = 0;
         return {
             u8() {
-                if (pos >= bytes.length) throw new CodeError('Der Code ist unvollständig (zu kurze Daten).');
+                if (pos >= bytes.length) throw new CodeError(I18N.t('code.err.incomplete'));
                 return bytes[pos++];
             },
             varint() {
@@ -103,10 +103,10 @@
                     if (!(b & 0x80)) return value;
                     factor *= 0x80;
                 }
-                throw new CodeError('Der Code enthält eine ungültige Zahl.');
+                throw new CodeError(I18N.t('code.err.badNumber'));
             },
             take(n) {
-                if (pos + n > bytes.length) throw new CodeError('Der Code ist unvollständig (zu kurze Daten).');
+                if (pos + n > bytes.length) throw new CodeError(I18N.t('code.err.incomplete'));
                 pos += n;
                 return bytes.subarray(pos - n, pos);
             },
@@ -124,7 +124,7 @@
     function fromBase64(text) {
         const clean = text.replace(/=+$/, '');
         if (!/^[A-Za-z0-9+/_-]+$/.test(clean) || clean.length % 4 === 1) {
-            throw new CodeError('Der Code enthält keine gültigen Base64-Daten.');
+            throw new CodeError(I18N.t('code.err.badBase64'));
         }
         const standard = clean.replace(/-/g, '+').replace(/_/g, '/');
         const binary = atob(standard + '='.repeat((4 - standard.length % 4) % 4));
@@ -134,7 +134,7 @@
     // --- Kompression -------------------------------------------------
     function requireStreams() {
         if (typeof CompressionStream === 'undefined' || typeof DecompressionStream === 'undefined') {
-            throw new CodeError('Dieser Browser unterstützt die benötigte Kompression nicht (CompressionStream). Bitte einen aktuellen Browser verwenden.');
+            throw new CodeError(I18N.t('code.err.noCompression'));
         }
     }
 
@@ -147,7 +147,7 @@
     async function gunzip(bytes) {
         requireStreams();
         if (bytes.length < 3 || bytes[0] !== 0x1f || bytes[1] !== 0x8b || bytes[2] !== 8) {
-            throw new CodeError('Nicht unterstütztes oder beschädigtes Kompressionsverfahren (GZIP erwartet).');
+            throw new CodeError(I18N.t('code.err.badGzip'));
         }
         const source = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
         const chunks = [];
@@ -160,12 +160,12 @@
                 } = await source.read();
                 if (done) break;
                 total += value.length;
-                if (total > MAX_PAYLOAD_BYTES) throw new CodeError('Die entpackten Daten sind zu groß.');
+                if (total > MAX_PAYLOAD_BYTES) throw new CodeError(I18N.t('code.err.tooBig'));
                 chunks.push(value);
             }
         } catch (error) {
             source.cancel().catch(() => {});
-            throw error instanceof CodeError ? error : new CodeError('Die komprimierten Daten sind beschädigt.', error);
+            throw error instanceof CodeError ? error : new CodeError(I18N.t('code.err.corrupt'), error);
         }
         const out = new Uint8Array(total);
         let offset = 0;
@@ -178,14 +178,14 @@
 
     // --- Arena -------------------------------------------------------
     function collectCells() {
-        if (!Array.isArray(grid) || grid.length !== HEIGHT) throw new CodeError('Die Arena hat eine ungültige Höhe.');
+        if (!Array.isArray(grid) || grid.length !== HEIGHT) throw new CodeError(I18N.t('code.err.badHeight'));
         const cells = new Uint8Array(WIDTH * HEIGHT);
         for (let y = 0; y < HEIGHT; y++) {
             const row = grid[y];
-            if (!Array.isArray(row) || row.length !== WIDTH) throw new CodeError(`Zeile ${y + 1} der Arena hat eine ungültige Breite.`);
+            if (!Array.isArray(row) || row.length !== WIDTH) throw new CodeError(I18N.t('code.err.badRowWidth', { row: y + 1 }));
             for (let x = 0; x < WIDTH; x++) {
                 const id = TERRAIN_ID.get(row[x]);
-                if (id === undefined) throw new CodeError(`Unbekanntes Gelände „${row[x]}“ bei Feld (${x}, ${y}). Die Arena wurde nicht gespeichert.`);
+                if (id === undefined) throw new CodeError(I18N.t('code.err.unknownTerrainAt', { terrain: row[x], x, y }));
                 cells[y * WIDTH + x] = id;
             }
         }
@@ -210,13 +210,13 @@
             const value = r.varint();
             const id = value % ID_SLOTS;
             const count = (value - id) / ID_SLOTS;
-            if (id >= TERRAIN.length) throw new CodeError('Der Code enthält ein unbekanntes Gelände.');
-            if (count < 1) throw new CodeError('Der Code enthält eine ungültige Lauflänge.');
-            if (index + count > cells.length) throw new CodeError('Der Code enthält zu viele Felder.');
+            if (id >= TERRAIN.length) throw new CodeError(I18N.t('code.err.unknownTerrain'));
+            if (count < 1) throw new CodeError(I18N.t('code.err.badRunLength'));
+            if (index + count > cells.length) throw new CodeError(I18N.t('code.err.tooManyTiles'));
             cells.fill(id, index, index + count);
             index += count;
         }
-        if (index !== cells.length) throw new CodeError('Der Code enthält zu wenige Felder.');
+        if (index !== cells.length) throw new CodeError(I18N.t('code.err.tooFewTiles'));
     }
 
     function packEncode(cells) {
@@ -236,11 +236,11 @@
         for (let i = 0; i < cells.length; i++) {
             let id = 0;
             for (let b = 0; b < ID_BITS; b++, bit++) id = (id << 1) | ((data[bit >> 3] >> (7 - (bit & 7))) & 1);
-            if (id >= TERRAIN.length) throw new CodeError('Der Code enthält ein unbekanntes Gelände.');
+            if (id >= TERRAIN.length) throw new CodeError(I18N.t('code.err.unknownTerrain'));
             cells[i] = id;
         }
         for (; bit < data.length * 8; bit++) {
-            if ((data[bit >> 3] >> (7 - (bit & 7))) & 1) throw new CodeError('Der Code enthält ungültige Restbits.');
+            if ((data[bit >> 3] >> (7 - (bit & 7))) & 1) throw new CodeError(I18N.t('code.err.badRemainder'));
         }
     }
 
@@ -258,13 +258,13 @@
         const width = r.varint();
         const height = r.varint();
         if (width < 1 || height < 1 || width > MAX_ARENA_DIM || height > MAX_ARENA_DIM || width * height > MAX_ARENA_CELLS) {
-            throw new CodeError('Der Code enthält ungültige Arena-Maße.');
+            throw new CodeError(I18N.t('code.err.badArenaSize'));
         }
         if (width !== WIDTH || height !== HEIGHT) {
-            throw new CodeError(`Die Arena im Code ist ${width} × ${height} Felder groß, die aktuelle Arena ${WIDTH} × ${HEIGHT}.`);
+            throw new CodeError(I18N.t('code.err.sizeMismatch', { width, height, WIDTH, HEIGHT }));
         }
         const length = r.varint();
-        if (length !== r.remaining()) throw new CodeError('Die Datenlänge im Code stimmt nicht.');
+        if (length !== r.remaining()) throw new CodeError(I18N.t('code.err.badDataLength'));
         const data = r.take(length);
         const cells = new Uint8Array(width * height);
         (packed ? packDecode : rleDecode)(data, cells);
@@ -286,14 +286,14 @@
 
     // --- Tribute -----------------------------------------------------
     function checkName(name, who) {
-        if (typeof name !== 'string' || name.trim() === '') throw new CodeError(`${who}: Der Name fehlt.`);
-        if ([...name].length > MAX_NAME_LENGTH) throw new CodeError(`${who}: Der Name ist länger als ${MAX_NAME_LENGTH} Zeichen.`);
-        if (NAME_FORBIDDEN.test(name)) throw new CodeError(`${who}: Der Name enthält nicht erlaubte Zeichen (< > " oder Steuerzeichen).`);
+        if (typeof name !== 'string' || name.trim() === '') throw new CodeError(I18N.t('code.err.nameMissing', { who }));
+        if ([...name].length > MAX_NAME_LENGTH) throw new CodeError(I18N.t('code.err.nameTooLong', { who, max: MAX_NAME_LENGTH }));
+        if (NAME_FORBIDDEN.test(name)) throw new CodeError(I18N.t('code.err.nameForbidden', { who }));
         return name;
     }
 
     function checkAge(age, who) {
-        if (!Number.isInteger(age) || age < 1 || age > MAX_AGE) throw new CodeError(`${who}: Das Alter ist ungültig (1 bis ${MAX_AGE}).`);
+        if (!Number.isInteger(age) || age < 1 || age > MAX_AGE) throw new CodeError(I18N.t('code.err.badAge', { who, max: MAX_AGE }));
         return age;
     }
 
@@ -301,11 +301,11 @@
     // Freunde werden über idToPos auf Positionen 1..n abgebildet; Ungültiges, Selbstbezug und Doppelte entfallen.
     // lenient (alte Codes): vorhandene, aber ungültige Werte (außer dem Namen) werden zu null und behalten beim Laden den Konstruktor-Standard.
     function toRecord(raw, number, idToPos, lenient = false) {
-        const who = `Tribut ${number}`;
-        if (!raw || typeof raw !== 'object') throw new CodeError(`${who}: Ungültige Daten.`);
+        const who = I18N.t('tribute.title', { id: number });
+        if (!raw || typeof raw !== 'object') throw new CodeError(I18N.t('code.err.badData', { who }));
         const name = checkName(raw.name, who);
         for (const key of ['age', 'gender', 'behavior', 'attributes', 'color']) {
-            if (raw[key] === undefined) throw new CodeError(`${who}: Die Eigenschaft „${key}“ fehlt.`);
+            if (raw[key] === undefined) throw new CodeError(I18N.t('code.err.propMissing', { who, key }));
         }
         const orDefault = check => {
             try {
@@ -317,29 +317,29 @@
         };
         const indexIn = (list, value, label) => {
             const index = list.indexOf(value);
-            if (index < 0) throw new CodeError(`${who}: ${label} ist ungültig.`);
+            if (index < 0) throw new CodeError(I18N.t('code.err.invalid', { who, label }));
             return index;
         };
         const age = orDefault(() => checkAge(raw.age, who));
-        const gender = orDefault(() => indexIn(GENDERS, raw.gender, 'Das Geschlecht'));
-        const behavior = orDefault(() => indexIn(BEHAVIORS, raw.behavior, 'Das Verhalten'));
+        const gender = orDefault(() => indexIn(GENDERS, raw.gender, I18N.t('code.err.genderLabel')));
+        const behavior = orDefault(() => indexIn(BEHAVIORS, raw.behavior, I18N.t('code.err.behaviorLabel')));
         const mask = orDefault(() => {
             const attrs = raw.attributes;
-            if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) throw new CodeError(`${who}: Die Attribute fehlen.`);
+            if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) throw new CodeError(I18N.t('code.err.attrsMissing', { who }));
             let bits = 0;
             for (const key of Object.keys(attrs)) {
                 const bit = ATTRIBUTES.indexOf(key);
-                if (bit < 0) throw new CodeError(`${who}: Unbekanntes Attribut „${key}“.`);
-                if (typeof attrs[key] !== 'boolean') throw new CodeError(`${who}: Das Attribut „${key}“ ist ungültig.`);
+                if (bit < 0) throw new CodeError(I18N.t('code.err.unknownAttr', { who, key }));
+                if (typeof attrs[key] !== 'boolean') throw new CodeError(I18N.t('code.err.badAttr', { who, key }));
                 if (attrs[key]) bits |= 1 << bit;
             }
             return bits;
         });
         const rgb = orDefault(() => {
-            if (typeof raw.color !== 'string' || !COLOR_PATTERN.test(raw.color)) throw new CodeError(`${who}: Die Farbe ist ungültig.`);
+            if (typeof raw.color !== 'string' || !COLOR_PATTERN.test(raw.color)) throw new CodeError(I18N.t('code.err.badColor', { who }));
             return [1, 3, 5].map(i => parseInt(raw.color.slice(i, i + 2), 16));
         });
-        if (raw.friends !== undefined && !Array.isArray(raw.friends)) throw new CodeError(`${who}: Die Freundesliste ist ungültig.`);
+        if (raw.friends !== undefined && !Array.isArray(raw.friends)) throw new CodeError(I18N.t('code.err.badFriendList', { who }));
         const friends = new Set();
         for (const id of raw.friends || []) {
             const pos = typeof id === 'number' ? idToPos.get(id) : undefined;
@@ -375,31 +375,31 @@
     function decodeTributes(bytes) {
         const r = reader(bytes);
         const count = r.varint();
-        if (count < MIN_TRIBUTES || count > MAX_TRIBUTES) throw new CodeError(`Ungültige Tribut-Anzahl im Code (erlaubt: ${MIN_TRIBUTES} bis ${MAX_TRIBUTES}).`);
+        if (count < MIN_TRIBUTES || count > MAX_TRIBUTES) throw new CodeError(I18N.t('code.err.badCountInCode', { min: MIN_TRIBUTES, max: MAX_TRIBUTES }));
         const records = [];
         for (let i = 1; i <= count; i++) {
-            const who = `Tribut ${i}`;
+            const who = I18N.t('tribute.title', { id: i });
             const nameLength = r.varint();
-            if (nameLength > MAX_NAME_LENGTH * 4) throw new CodeError(`${who}: Der Name ist zu lang.`);
+            if (nameLength > MAX_NAME_LENGTH * 4) throw new CodeError(I18N.t('code.err.nameTooLongShort', { who }));
             let name;
             try {
                 name = decoder.decode(r.take(nameLength));
             } catch (error) {
                 if (error instanceof CodeError) throw error;
-                throw new CodeError(`${who}: Der Name ist kein gültiges UTF-8.`, error);
+                throw new CodeError(I18N.t('code.err.nameBadUtf8', { who }), error);
             }
             checkName(name, who);
             const age = checkAge(r.varint(), who);
             const flags = r.u8();
             const behavior = (flags >> 4) & 3;
-            if (flags >> 6 || behavior >= BEHAVIORS.length) throw new CodeError(`${who}: Ungültige Eigenschaften im Code.`);
+            if (flags >> 6 || behavior >= BEHAVIORS.length) throw new CodeError(I18N.t('code.err.badProps', { who }));
             const rgb = [r.u8(), r.u8(), r.u8()];
             const friendCount = r.varint();
-            if (friendCount > count - 1) throw new CodeError(`${who}: Zu viele Freunde.`);
+            if (friendCount > count - 1) throw new CodeError(I18N.t('code.err.tooManyFriends', { who }));
             const friends = new Set();
             for (let f = 0; f < friendCount; f++) {
                 const id = r.varint();
-                if (id < 1 || id > count || id === i || friends.has(id)) throw new CodeError(`${who}: Ungültige Freundes-ID.`);
+                if (id < 1 || id > count || id === i || friends.has(id)) throw new CodeError(I18N.t('code.err.badFriendId', { who }));
                 friends.add(id);
             }
             records.push({
@@ -412,13 +412,13 @@
                 friends: [...friends]
             });
         }
-        if (r.remaining() !== 0) throw new CodeError('Der Code enthält unerwartete Zusatzdaten.');
+        if (r.remaining() !== 0) throw new CodeError(I18N.t('code.err.extraData'));
         return records;
     }
 
     async function saveTributes() {
         if (!Array.isArray(tributes) || tributes.length < MIN_TRIBUTES || tributes.length > MAX_TRIBUTES) {
-            throw new CodeError(`Ungültige Tribut-Anzahl (erlaubt: ${MIN_TRIBUTES} bis ${MAX_TRIBUTES}).`);
+            throw new CodeError(I18N.t('code.err.badCount', { min: MIN_TRIBUTES, max: MAX_TRIBUTES }));
         }
         const idToPos = new Map(tributes.map((t, i) => [t && t.id, i + 1]));
         const records = tributes.map((t, i) => toRecord(t, i + 1, idToPos));
@@ -438,23 +438,23 @@
     function legacyArena(data) {
         const height = data.length;
         const width = data[0].length;
-        if (height > MAX_ARENA_DIM || width < 1 || width > MAX_ARENA_DIM) throw new CodeError('Die Arena im Code hat ungültige Maße.');
+        if (height > MAX_ARENA_DIM || width < 1 || width > MAX_ARENA_DIM) throw new CodeError(I18N.t('code.err.legacyBadSize'));
         if (!data.every(row => row.length === width)) throw new CodeError('Die Zeilen der Arena im Code sind unterschiedlich lang.');
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                if (!TERRAIN_ID.has(data[y][x])) throw new CodeError(`Unbekanntes Gelände bei Feld (${x}, ${y}) im Code.`);
+                if (!TERRAIN_ID.has(data[y][x])) throw new CodeError(I18N.t('code.err.legacyTerrainAt', { x, y }));
             }
         }
         // alte Größen (z. B. 100 x 100) werden wie bisher hochskaliert
         const scaled = typeof normalizeLoadedGrid === 'function' ? normalizeLoadedGrid(data) : data;
         if (scaled.length !== HEIGHT || scaled.some(row => row.length !== WIDTH)) {
-            throw new CodeError(`Die Arena im Code lässt sich nicht auf ${WIDTH} × ${HEIGHT} Felder bringen.`);
+            throw new CodeError(I18N.t('code.err.legacyCannotFit', { WIDTH, HEIGHT }));
         }
         return scaled;
     }
 
     function legacyTributes(data) {
-        if (data.length > MAX_TRIBUTES) throw new CodeError(`Zu viele Tribute im Code (maximal ${MAX_TRIBUTES}).`);
+        if (data.length > MAX_TRIBUTES) throw new CodeError(I18N.t('code.err.legacyTooMany', { max: MAX_TRIBUTES }));
         const idToPos = new Map();
         data.forEach((t, i) => {
             const id = Number.isInteger(t.id) ? t.id : i + 1;
@@ -468,9 +468,9 @@
         try {
             data = JSON.parse(legacyText(fromBase64(compact)));
         } catch (error) {
-            throw new CodeError('Unbekanntes Code-Format. Der Code ist weder ein gültiger neuer noch ein gültiger alter Code.', error);
+            throw new CodeError(I18N.t('code.err.unknownFormat'), error);
         }
-        if (!Array.isArray(data) || data.length === 0) throw new CodeError('Der alte Code enthält weder eine Arena noch Tribute.');
+        if (!Array.isArray(data) || data.length === 0) throw new CodeError(I18N.t('code.err.legacyEmpty'));
         if (data.every(entry => Array.isArray(entry))) return {
             type: 'arena',
             grid: legacyArena(data)
@@ -479,7 +479,7 @@
             type: 'tributes',
             records: legacyTributes(data)
         };
-        throw new CodeError('Der alte Code enthält weder eine Arena noch Tribute.');
+        throw new CodeError(I18N.t('code.err.legacyEmpty'));
     }
 
     // --- Laden -------------------------------------------------------
@@ -491,7 +491,7 @@
         if (!compact.startsWith('HG2')) return parseLegacy(compact);
         const prefix = compact.slice(0, 4);
         if (prefix !== PREFIX_RLE && prefix !== PREFIX_PACKED && prefix !== PREFIX_TRIBUTES) {
-            throw new CodeError(`Unbekannter Code-Präfix „${prefix}“.`);
+            throw new CodeError(I18N.t('code.err.unknownPrefix', { prefix }));
         }
         const bytes = await gunzip(fromBase64(compact.slice(4)));
         return prefix === PREFIX_TRIBUTES ? {
@@ -505,7 +505,7 @@
 
     function ensureIdle() {
         if (typeof simulationRunning !== 'undefined' && simulationRunning) {
-            throw new CodeError('Während die Simulation läuft, kann kein Code geladen werden.');
+            throw new CodeError(I18N.t('code.err.running'));
         }
     }
 
@@ -589,31 +589,31 @@
 
     function report(error, context) {
         console.error(`${context}:`, error);
-        notify(`${context}: ${error instanceof CodeError ? error.message : 'Unerwarteter Fehler (Details in der Konsole).'}`, true);
+        notify(`${context}: ${error instanceof CodeError ? error.message : I18N.t('code.err.unexpected')}`, true);
     }
 
     async function showCode(save, label) {
         try {
             const input = document.getElementById('load-code');
-            if (!input) throw new CodeError('Das Code-Feld fehlt.');
+            if (!input) throw new CodeError(I18N.t('code.err.fieldMissing'));
             input.value = await save();
-            notify(`${label} erstellt (${input.value.length} Zeichen)`);
+            notify(I18N.t('code.created', { label, length: input.value.length }));
         } catch (error) {
-            report(error, `${label} konnte nicht erstellt werden`);
+            report(error, I18N.t('code.createFailed', { label }));
         }
     }
 
-    const showArenaCode = () => showCode(saveArena, 'Arena-Code');
-    const showTributesCode = () => showCode(saveTributes, 'Tributen-Code');
+    const showArenaCode = () => showCode(saveArena, I18N.t('code.label.arena'));
+    const showTributesCode = () => showCode(saveTributes, I18N.t('code.label.tributes'));
 
     async function loadFromCode() {
         const input = document.getElementById('load-code');
         try {
             const type = await loadCode(input ? input.value : null);
             if (input) input.value = '';
-            notify(type === 'arena' ? 'Arena geladen' : 'Tribute geladen');
+            notify(I18N.t(type === 'arena' ? 'code.arenaLoaded' : 'code.tributesLoaded'));
         } catch (error) {
-            report(error, 'Laden fehlgeschlagen');
+            report(error, I18N.t('code.loadFailed'));
         }
     }
 
@@ -633,7 +633,7 @@
         const input = document.getElementById('load-code');
         const text = input ? input.value.trim() : '';
         if (!text) {
-            notify('Kein Code zum Kopieren vorhanden', true);
+            notify(I18N.t('code.copyEmpty'), true);
             return;
         }
         let copied = false;
@@ -646,8 +646,8 @@
             }
         }
         if (!copied) copied = fallbackCopy(input);
-        if (copied) notify('Code kopiert');
-        else notify('Kopieren nicht möglich. Bitte den Code markieren und mit Strg+C kopieren.', true);
+        if (copied) notify(I18N.t('code.copied'));
+        else notify(I18N.t('code.copyFailed'), true);
     }
 
     // Button und Rückmeldung einmalig anlegen; false, solange das Codefeld fehlt
@@ -658,7 +658,8 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.id = 'code-copy-btn';
-            button.textContent = 'Code kopieren';
+            button.textContent = I18N.t('code.copy');
+            button.dataset.i18n = 'code.copy';
             button.addEventListener('click', copyCode);
             input.after(button);
         }
