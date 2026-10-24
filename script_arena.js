@@ -521,3 +521,249 @@ function generateArena() {
     smoothBiomeEdges();
     drawGrid();
 }
+
+/* =====================================================================
+ * Spawn-Ring und Arena-Einstellungen
+ *
+ * Die Tribute starten auf einem Kreis um das Zentrum. Welcher Tribut auf
+ * welchem Platz startet, hängt nicht von der ID ab:
+ *   automatisch  aus einem Hash des Arena-Geländes: dieselbe Arena ergibt
+ *                immer denselben Ring (auch ohne Seed, z. B. bei gemalten Arenen)
+ *   manuell      im Menü "Arena-Einstellungen" tauschen zwei angeklickte Tribute
+ *                ihre Plätze. Bleibt bei Änderungen an der Arena erhalten und
+ *                wird nur dann im Arena-Code gespeichert (script_codes.js).
+ * ===================================================================== */
+let manualSpawnRing = null; // Platz im Ring je Tribut (Index = ID - 1); null = automatisch
+
+function arenaHash() {
+    let h = 2166136261;
+    for (let y = 0; y < HEIGHT; y++) {
+        const row = grid[y];
+        for (let x = 0; x < WIDTH; x++) h = Math.imul(h ^ row[x].charCodeAt(0), 16777619);
+    }
+    return h >>> 0;
+}
+
+// Gültig: jede Zahl 0..num-1 genau einmal
+function isValidSpawnRing(ring, num) {
+    if (!Array.isArray(ring) || ring.length !== num) return false;
+    return new Set(ring).size === num && ring.every(slot => Number.isInteger(slot) && slot >= 0 && slot < num);
+}
+
+// Platz im Ring für jeden Tribut (Index = ID - 1)
+function spawnOrder(num) {
+    if (manualSpawnRing) {
+        if (isValidSpawnRing(manualSpawnRing, num)) return manualSpawnRing.slice();
+        manualSpawnRing = null; // passt nicht mehr zur Tribut-Anzahl
+    }
+    let state = (arenaHash() ^ Math.imul(num, 0x9E3779B1)) >>> 0;
+    const rand = () => {
+        state = (state + 0x6D2B79F5) | 0;
+        let t = Math.imul(state ^ (state >>> 15), state | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const order = Array.from({
+        length: num
+    }, (_, i) => i);
+    for (let i = num - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+    }
+    return order;
+}
+
+// Setzt die Tribute (vor dem Start) auf ihre Ringplätze
+function applySpawnPositions() {
+    const n = tributes.length;
+    if (!n) return;
+    const slots = computeSpawnSlots(n);
+    const order = spawnOrder(n);
+    tributes.forEach((t, i) => {
+        t.x = slots[order[i]].x;
+        t.y = slots[order[i]].y;
+    });
+    drawGrid();
+}
+
+(function arenaSettingsMenu() {
+    let overlay, canvas, status, background = null;
+    let selected = null; // zuerst angeklickter Tribut (Index)
+
+    function layout() {
+        const n = tributes.length;
+        const slots = computeSpawnSlots(n);
+        const order = spawnOrder(n);
+        const cx = Math.floor(WIDTH / 2),
+            cy = Math.floor(HEIGHT / 2);
+        const extent = slots.reduce((m, p) => Math.max(m, Math.abs(p.x - cx), Math.abs(p.y - cy)), 8) + 4;
+        const scale = canvas.width / (2 * extent);
+        const spacing = n > 1 ? Math.hypot(slots[0].x - slots[1].x, slots[0].y - slots[1].y) * scale : 40;
+        return {
+            cx,
+            cy,
+            extent,
+            radius: Math.max(6, Math.min(16, spacing * 0.4)),
+            points: tributes.map((_, i) => ({
+                x: (slots[order[i]].x + 0.5 - cx + extent) * scale,
+                y: (slots[order[i]].y + 0.5 - cy + extent) * scale
+            }))
+        };
+    }
+
+    function updateStatus() {
+        status.textContent = selected !== null && tributes[selected] ?
+            I18N.t('as.ringPick', {
+                name: tributes[selected].name
+            }) :
+            I18N.t(manualSpawnRing ? 'as.ringManual' : 'as.ringAutoState');
+    }
+
+    function draw() {
+        const g = canvas.getContext('2d');
+        const {
+            cx,
+            cy,
+            extent,
+            radius,
+            points
+        } = layout();
+        g.clearRect(0, 0, canvas.width, canvas.height);
+        if (background) {
+            const k = background.width / WIDTH;
+            g.drawImage(background, (cx - extent) * k, (cy - extent) * k, 2 * extent * k, 2 * extent * k, 0, 0, canvas.width, canvas.height);
+        }
+        g.fillStyle = 'rgba(27, 11, 35, 0.45)';
+        g.fillRect(0, 0, canvas.width, canvas.height);
+        g.font = `700 ${Math.round(radius * 1.05)}px "DM Sans", system-ui, sans-serif`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        points.forEach((p, i) => {
+            const label = String(tributes[i].id);
+            g.beginPath();
+            g.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            g.fillStyle = tributes[i].color;
+            g.fill();
+            g.lineWidth = i === selected ? 4 : 2;
+            g.strokeStyle = i === selected ? '#fcff40' : 'rgba(255, 255, 255, 0.85)';
+            g.stroke();
+            g.lineWidth = 3;
+            g.strokeStyle = 'rgba(15, 5, 20, 0.9)';
+            g.strokeText(label, p.x, p.y);
+            g.fillStyle = '#fff';
+            g.fillText(label, p.x, p.y);
+        });
+        updateStatus();
+    }
+
+    function swap(a, b) {
+        const ring = spawnOrder(tributes.length);
+        [ring[a], ring[b]] = [ring[b], ring[a]];
+        manualSpawnRing = ring;
+        applySpawnPositions();
+    }
+
+    function onClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * canvas.width / rect.width;
+        const y = (e.clientY - rect.top) * canvas.height / rect.height;
+        const {
+            radius,
+            points
+        } = layout();
+        let hit = -1,
+            best = radius + 4;
+        points.forEach((p, i) => {
+            const d = Math.hypot(p.x - x, p.y - y);
+            if (d <= best) {
+                best = d;
+                hit = i;
+            }
+        });
+        if (hit < 0 || hit === selected) selected = null;
+        else if (selected === null) selected = hit;
+        else {
+            swap(selected, hit);
+            selected = null;
+        }
+        draw();
+    }
+
+    function open() {
+        applySpawnPositions(); // zeigt den Ring der aktuellen Arena
+        try {
+            background = Renderer.buildTerrainCanvas(grid, 4);
+        } catch (e) {
+            background = null;
+        }
+        selected = null;
+        overlay.querySelector('#as-advanced').checked = advancedSettings;
+        overlay.hidden = false;
+        draw();
+    }
+
+    function close() {
+        overlay.hidden = true;
+        background = null;
+    }
+
+    function build() {
+        const editor = document.querySelector('.arena-editor');
+        if (!editor) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = 'arena-settings-btn';
+        button.dataset.i18n = 'as.open';
+        button.addEventListener('click', open);
+        editor.appendChild(button);
+
+        overlay = document.createElement('div');
+        overlay.id = 'arena-settings';
+        overlay.hidden = true;
+        overlay.innerHTML = `
+            <div class="as-box" role="dialog" aria-modal="true">
+                <h3 data-i18n="as.title"></h3>
+                <label><input type="checkbox" id="as-advanced"> <span data-i18n="as.advanced"></span></label>
+                <p class="as-hint" data-i18n="as.advancedHint"></p>
+                <h4 data-i18n="as.ringTitle"></h4>
+                <p class="as-hint" data-i18n="as.ringHint"></p>
+                <canvas id="as-ring" width="360" height="360"></canvas>
+                <p class="as-hint" id="as-status"></p>
+                <button type="button" id="as-auto" data-i18n="as.ringAuto"></button>
+                <button type="button" id="as-close" data-i18n="as.close"></button>
+            </div>`;
+        document.body.appendChild(overlay);
+        canvas = overlay.querySelector('#as-ring');
+        status = overlay.querySelector('#as-status');
+        I18N.apply(button);
+        I18N.apply(overlay);
+
+        canvas.addEventListener('click', onClick);
+        overlay.querySelector('#as-advanced').addEventListener('change', e => {
+            advancedSettings = e.target.checked;
+            updateProfiles();
+        });
+        overlay.querySelector('#as-auto').addEventListener('click', () => {
+            manualSpawnRing = null;
+            selected = null;
+            applySpawnPositions();
+            draw();
+        });
+        overlay.querySelector('#as-close').addEventListener('click', close);
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) close();
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !overlay.hidden) close();
+        });
+        I18N.onChange(() => {
+            I18N.apply(overlay);
+            if (!overlay.hidden) updateStatus();
+        });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build, {
+        once: true
+    });
+    else build();
+})();

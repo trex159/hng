@@ -1,6 +1,6 @@
 # Hungerspiele Simulation
 
-**Inoffizielles Fanprojekt, aktuelle Version HNG 11.1**
+**Inoffizielles Fanprojekt, aktuelle Version HNG 11.2**
 
 Eine Browser-Simulation, in der bis zu 48 Tribute auf einer zufällig generierten Arena um das Überleben kämpfen. Jeder Tribut trifft seine Entscheidungen selbst: Er sucht Waffen, schließt Freundschaften, flieht vor Gefahren, regeneriert sich, rächt sich und kann Freunde verraten. Du bist der Gamemaker und greifst mit Wetter, Wildtieren, Heilung und Endspiel ein.
 
@@ -377,7 +377,7 @@ Die Logik meldet nur, was geschehen ist. Darstellung, Partikel, Statistik und Ti
 ## Lizenz und Rechtliches
 
 - **Fanprojekt:** Inoffiziell und nicht-kommerziell. Keine Verbindung zu Suzanne Collins, Lionsgate, Scholastic oder anderen Rechteinhabern der *Hunger Games*-Reihe. Es werden keine Originalbilder, Filmszenen, Texte oder Musikstücke aus den offiziellen Werken verwendet.
-- **Lizenz:** [Creative Commons Namensnennung, Nicht-kommerziell 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/deed.de). Nicht-kommerzielle Weiterverwendung und Modifikation zu Lernzwecken ist erlaubt, wenn der Ursprung ("Hungerspiele Simulation, Fanprojekt" / "trex159") genannt wird. Kommerzielle Nutzung ist ohne Zustimmung nicht erlaubt.
+- **Lizenz:** Siehe License-Datei.
 - **Datenschutz:** Es werden keine personenbezogenen Daten gespeichert. Alles wird lokal im Browser verarbeitet.
 - **Haftung:** Die Nutzung erfolgt auf eigene Verantwortung. Die Simulation stellt ausschließlich fiktive Ereignisse dar und enthält keine realen Personen. Mehr dazu im [Disclaimer](Disclaimer.html).
 

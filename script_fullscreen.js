@@ -20,12 +20,7 @@
 (function () {
     const MAX_PPT = 48;
     const STORAGE_KEY = 'hng.fullscreenOptions';
-    const WEATHER_OPTIONS = [
-        ['clear', 'Gutes Wetter'],
-        ['fog', 'Nebel'],
-        ['rain', 'Regen'],
-        ['snow', 'Schnee']
-    ];
+    const WEATHER_KEYS = ['clear', 'fog', 'rain', 'snow'];
 
     const camera = {
         cx: 100,
@@ -67,6 +62,14 @@
         buildDom();
         bindEvents();
         SimEvents.on('log', onLog);
+        I18N.onChange(() => {
+            const select = overlay.querySelector('#fs-draw-mode');
+            const value = select.value;
+            select.innerHTML = document.getElementById('draw-mode').innerHTML;
+            select.value = value;
+            I18N.apply(overlay);
+            if (isOpen) updateHud();
+        });
     }
 
     function loadPrefs() {
@@ -92,7 +95,7 @@
         const gameCanvas = document.getElementById('arena');
         const bar = document.createElement('div');
         bar.className = 'view-bar';
-        bar.innerHTML = '<button type="button" id="fs-open">⛶ Vollbild</button>';
+        bar.innerHTML = '<button type="button" id="fs-open" data-i18n="fs.open"></button>';
         gameCanvas.insertAdjacentElement('afterend', bar);
 
         overlay = document.createElement('div');
@@ -110,36 +113,37 @@
             <div id="fs-tip" hidden></div>
             <div id="fs-bar">
                 <div class="fs-group">
-                    <button type="button" data-act="start">▶ Start</button>
-                    <button type="button" data-act="pause">Pause</button>
-                    <label>Tempo <input type="range" id="fs-speed" min="1" max="10"></label>
-                    <label>Wetter <select id="fs-weather">${WEATHER_OPTIONS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
-                    <button type="button" data-act="endgame">Endspiel</button>
+                    <button type="button" data-act="start" data-i18n="fs.start"></button>
+                    <button type="button" data-act="pause"></button>
+                    <label><span data-i18n="fs.speed"></span> <input type="range" id="fs-speed" min="1" max="10"></label>
+                    <label><span data-i18n="fs.weather"></span> <select id="fs-weather">${WEATHER_KEYS.map(k => `<option value="${k}" data-i18n="weather.${k}"></option>`).join('')}</select></label>
+                    <button type="button" data-act="endgame" data-i18n="fs.endgame"></button>
                 </div>
                 <div class="fs-group" id="fs-edit-group">
-                    <label><input type="checkbox" id="fs-paint"> Gelände zeichnen</label>
-                    <label>Fläche <select id="fs-draw-mode">${document.getElementById('draw-mode').innerHTML}</select></label>
-                    <label>Pinsel <input type="range" id="fs-brush" min="1" max="20"></label>
+                    <label><input type="checkbox" id="fs-paint"> <span data-i18n="fs.paint"></span></label>
+                    <label><span data-i18n="fs.terrain"></span> <select id="fs-draw-mode">${document.getElementById('draw-mode').innerHTML}</select></label>
+                    <label><span data-i18n="fs.brush"></span> <input type="range" id="fs-brush" min="1" max="20"></label>
                 </div>
                 <div class="fs-group" id="fs-animal-group">
-                    <button type="button" data-act="animal">Wildtier</button>
-                    <label>Leben <input type="number" id="fs-animal-hp" min="1" max="500"></label>
-                    <label>Schaden <input type="number" id="fs-animal-dmg-min" min="0" max="100"> bis <input type="number" id="fs-animal-dmg-max" min="0" max="100"></label>
-                    <label><input type="checkbox" id="fs-animal-pick"> Position per Klick</label>
+                    <button type="button" data-act="animal" data-i18n="fs.animal"></button>
+                    <label><span data-i18n="fs.health"></span> <input type="number" id="fs-animal-hp" min="1" max="500"></label>
+                    <label><span data-i18n="fs.damage"></span> <input type="number" id="fs-animal-dmg-min" min="0" max="100"> <span data-i18n="common.to"></span> <input type="number" id="fs-animal-dmg-max" min="0" max="100"></label>
+                    <label><input type="checkbox" id="fs-animal-pick"> <span data-i18n="fs.pickPos"></span></label>
                 </div>
                 <div class="fs-group">
-                    <label><input type="checkbox" data-pref="names"> Namen</label>
-                    <label><input type="checkbox" data-pref="healthBars"> Lebensbalken</label>
-                    <label><input type="checkbox" data-pref="numbers"> Schadenszahlen</label>
-                    <label><input type="checkbox" data-pref="particles"> Partikel</label>
-                    <label><input type="checkbox" data-pref="grid"> Raster</label>
+                    <label><input type="checkbox" data-pref="names"> <span data-i18n="fs.names"></span></label>
+                    <label><input type="checkbox" data-pref="healthBars"> <span data-i18n="fs.healthBars"></span></label>
+                    <label><input type="checkbox" data-pref="numbers"> <span data-i18n="fs.damageNumbers"></span></label>
+                    <label><input type="checkbox" data-pref="particles"> <span data-i18n="fs.particles"></span></label>
+                    <label><input type="checkbox" data-pref="grid"> <span data-i18n="fs.grid"></span></label>
                 </div>
                 <div class="fs-group">
-                    <button type="button" data-act="fit">Ganze Arena</button>
-                    <button type="button" data-act="close">✕ Schließen</button>
+                    <button type="button" data-act="fit" data-i18n="fs.fit"></button>
+                    <button type="button" data-act="close" data-i18n="fs.close"></button>
                 </div>
             </div>`;
         document.body.appendChild(overlay);
+        I18N.apply(overlay);
 
         canvas = overlay.querySelector('#fs-canvas');
         ctx = canvas.getContext('2d');
@@ -305,11 +309,11 @@
     // ---------------------------------------------------------------
     function updateHud() {
         overlay.querySelector('#fs-clock').textContent = formatGameTime();
-        overlay.querySelector('#fs-alive').textContent = `Verbleibende Tribute: ${tributes.filter(t => t.alive).length}`;
+        overlay.querySelector('#fs-alive').textContent = `${I18N.t('ctrl.alive')} ${tributes.filter(t => t.alive).length}`;
         const follow = overlay.querySelector('#fs-follow');
         const followed = followId !== null ? tributes.find(t => t.id === followId) : null;
         follow.hidden = !followed;
-        if (followed) follow.textContent = `Kamera folgt: ${followed.name}`;
+        if (followed) follow.textContent = I18N.t('fs.follow', { name: followed.name });
 
         const notStarted = !simulationRunning && !simulationPaused && simTick === 0 && !winnerDeclared;
         const active = simulationRunning || simulationPaused;
@@ -318,7 +322,7 @@
         startBtn.hidden = !notStarted;
         pauseBtn.hidden = notStarted;
         pauseBtn.disabled = !active;
-        pauseBtn.textContent = simulationPaused ? 'Fortsetzen' : 'Pause';
+        pauseBtn.textContent = I18N.t(simulationPaused ? 'fs.resume' : 'fs.pause');
         overlay.querySelector('[data-act="animal"]').disabled = !active || lavaStart;
         overlay.querySelector('#fs-edit-group').hidden = !notStarted;
         overlay.querySelector('#fs-animal-group').hidden = notStarted;
@@ -444,9 +448,9 @@
         return best;
     }
 
-    function showTip(t, e) {
+    function showTip(trib, e) {
         tip.hidden = false;
-        tip.innerHTML = `<b style="color:${t.color}">${escapeHtml(t.name)}</b><br>Leben: ${Math.max(0, Math.round(t.health))} / ${MAX_HEALTH}<br>Verhalten: ${t.behavior}<br>Kills: ${t.kills} · Schaden: ${Math.round(t.damageDealt)}`;
+        tip.innerHTML = `<b style="color:${trib.color}">${escapeHtml(trib.name)}</b><br>${I18N.t('fs.tipHealth', { health: Math.max(0, Math.round(trib.health)), max: MAX_HEALTH })}<br>${I18N.t('fs.tipBehavior', { behavior: I18N.t('behavior.' + trib.behavior) })}<br>${I18N.t('fs.tipKills', { kills: trib.kills, damage: Math.round(trib.damageDealt) })}`;
         const x = Math.min(e.clientX + 16, window.innerWidth - 200);
         const y = Math.min(e.clientY + 16, window.innerHeight - 110);
         tip.style.left = `${x}px`;

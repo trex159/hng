@@ -101,7 +101,8 @@ function refreshLogTributeOptions() {
     select.innerHTML = '';
     const all = document.createElement('option');
     all.value = 'all';
-    all.textContent = 'Alle';
+    all.textContent = I18N.t('common.all');
+    all.dataset.i18n = 'common.all';
     select.appendChild(all);
     tributes.forEach(t => {
         const option = document.createElement('option');
@@ -116,6 +117,15 @@ function refreshLogTributeOptions() {
     select.value = logFilter.tributeId;
 }
 
+// Tooltips der Ausblenden-Knöpfe ("{Kategorie} im Log ausblenden")
+function updateExcludeTitles() {
+    document.querySelectorAll('#log-filter-bar .log-exclude-btn').forEach(btn => {
+        btn.title = I18N.t('logfilter.hideTitle', {
+            label: I18N.t(`logcat.${btn.dataset.exclude}`)
+        });
+    });
+}
+
 function createLogFilterControls() {
     const bar = document.getElementById('log-filter-bar');
     if (!bar) return;
@@ -124,8 +134,7 @@ function createLogFilterControls() {
     const categories = includeButtons
         .filter(btn => btn.dataset.type !== 'all')
         .map(btn => ({
-            type: btn.dataset.type,
-            label: btn.textContent.trim()
+            type: btn.dataset.type
         }));
 
     // Kategorie anzeigen (bestehende Buttons). Eine ausgeblendete Kategorie wird dabei wieder eingeblendet.
@@ -138,17 +147,15 @@ function createLogFilterControls() {
     // Kategorien ausblenden
     const excludeGroup = document.createElement('span');
     excludeGroup.className = 'log-filter-group';
-    excludeGroup.innerHTML = '<span>Ausblenden:</span>';
+    excludeGroup.innerHTML = '<span data-i18n="logfilter.hide"></span>';
     categories.forEach(({
-        type,
-        label
+        type
     }) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'log-filter-btn log-exclude-btn';
         btn.dataset.exclude = type;
-        btn.textContent = label;
-        btn.title = `${label} im Log ausblenden`;
+        btn.dataset.i18n = `logcat.${type}`;
         btn.addEventListener('click', () => {
             if (logFilter.exclude.has(type)) {
                 logFilter.exclude.delete(type);
@@ -164,7 +171,7 @@ function createLogFilterControls() {
     // Nur Einträge mit einem bestimmten Tribut
     const tributeGroup = document.createElement('label');
     tributeGroup.className = 'log-filter-group';
-    tributeGroup.innerHTML = '<span>Nur mit Tribut:</span><select id="log-filter-tribute"></select>';
+    tributeGroup.innerHTML = '<span data-i18n="logfilter.tribute"></span><select id="log-filter-tribute"></select>';
     const select = tributeGroup.querySelector('select');
     select.addEventListener('mousedown', refreshLogTributeOptions);
     select.addEventListener('focus', refreshLogTributeOptions);
@@ -177,7 +184,7 @@ function createLogFilterControls() {
     reset.type = 'button';
     reset.id = 'log-filter-reset';
     reset.className = 'log-filter-btn';
-    reset.textContent = 'Filter zurücksetzen';
+    reset.dataset.i18n = 'logfilter.reset';
     reset.hidden = true;
     reset.addEventListener('click', () => {
         logFilter.include = 'all';
@@ -187,9 +194,17 @@ function createLogFilterControls() {
     });
 
     bar.append(excludeGroup, tributeGroup, reset);
+    I18N.apply(bar);
+    updateExcludeTitles();
     refreshLogTributeOptions();
     syncLogFilterControls();
 }
 
 SimEvents.on('simStart', refreshLogTributeOptions);
+I18N.onChange(() => {
+    updateExcludeTitles();
+    const select = document.getElementById('log-filter-tribute');
+    if (select) delete select.dataset.signature; // "Alle" neu beschriften
+    refreshLogTributeOptions();
+});
 document.addEventListener('DOMContentLoaded', createLogFilterControls);

@@ -18,37 +18,53 @@
 
 const STAT_METRICS = [{
     key: 'damageDealt',
-    label: 'Schaden verteilt',
+    get label() {
+        return I18N.t('stats.metric.damageDealt');
+    },
     get: t => Math.round(t.damageDealt || 0)
 }, {
     key: 'damageTaken',
-    label: 'Schaden erlitten',
+    get label() {
+        return I18N.t('stats.metric.damageTaken');
+    },
     get: t => Math.round(t.damageTaken || 0)
 }, {
     key: 'distanceMoved',
-    label: 'Distanz gelaufen',
+    get label() {
+        return I18N.t('stats.metric.distanceMoved');
+    },
     get: t => t.distanceMoved || 0
 }, {
     key: 'kills',
-    label: 'Kills',
+    get label() {
+        return I18N.t('stats.metric.kills');
+    },
     get: t => t.kills || 0
 }, {
     key: 'survival',
-    label: 'Überlebt (Zeitpunkte)',
+    get label() {
+        return I18N.t('stats.metric.survival');
+    },
     get: t => SimStats.survivalOf(t)
 }];
 
 const HEAT_LAYERS = {
     visits: {
-        label: 'Aufenthalt',
+        get label() {
+            return I18N.t('stats.layer.visits');
+        },
         blur: 2
     },
     damage: {
-        label: 'Schaden',
+        get label() {
+            return I18N.t('stats.layer.damage');
+        },
         blur: 3
     },
     deaths: {
-        label: 'Todesorte',
+        get label() {
+            return I18N.t('stats.layer.deaths');
+        },
         blur: 5
     }
 };
@@ -77,6 +93,7 @@ const statsView = {
     pathSelection: null, // Set der angezeigten Tribut-IDs (null = noch nicht initialisiert)
     pathTick: null, // null = bis zum letzten Zeitpunkt
     pathMarkers: true,
+    pathAliveOnly: false, // nur Tribute zeigen, die zum Zeitpunkt des Reglers noch leben
     chipSignature: '',
     podiumSignature: '',
     pending: false,
@@ -145,34 +162,34 @@ function createStatsPanel() {
         document.body.insertBefore(container, statsEl('log-filter-bar'));
     }
     container.className = 'stats-panel';
-    const metricOptions = STAT_METRICS.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
-    const layerOptions = Object.entries(HEAT_LAYERS).map(([k, l]) => `<option value="${k}">${l.label}</option>`).join('');
+    const metricOptions = STAT_METRICS.map(m => `<option value="${m.key}" data-i18n="stats.metric.${m.key}">${m.label}</option>`).join('');
+    const layerOptions = Object.entries(HEAT_LAYERS).map(([k, l]) => `<option value="${k}" data-i18n="stats.layer.${k}">${l.label}</option>`).join('');
     container.innerHTML = `
         <div class="stats-head">
-            <h2>Statistik</h2>
-            <button id="stats-toggle" type="button" aria-expanded="true">Ausblenden</button>
+            <h2 data-i18n="stats.title"></h2>
+            <button id="stats-toggle" type="button" aria-expanded="true"></button>
         </div>
         <div class="stats-body" id="stats-body">
             <div class="stats-tabs" role="tablist">
-                <button type="button" class="stats-tab active" data-tab="table">Tabelle</button>
-                <button type="button" class="stats-tab" data-tab="bars">Balken</button>
-                <button type="button" class="stats-tab" data-tab="heat">Heatmap</button>
-                <button type="button" class="stats-tab" data-tab="paths">Pfade</button>
-                <button type="button" class="stats-tab" data-tab="podium">Podest</button>
+                <button type="button" class="stats-tab active" data-tab="table" data-i18n="stats.tab.table"></button>
+                <button type="button" class="stats-tab" data-tab="bars" data-i18n="stats.tab.bars"></button>
+                <button type="button" class="stats-tab" data-tab="heat" data-i18n="stats.tab.heat"></button>
+                <button type="button" class="stats-tab" data-tab="paths" data-i18n="stats.tab.paths"></button>
+                <button type="button" class="stats-tab" data-tab="podium" data-i18n="stats.tab.podium"></button>
             </div>
 
             <div class="stats-pane" data-pane="table">
                 <div id="stats-sort-bar" class="stats-controls">
-                    <label>Sortieren nach:
+                    <label><span data-i18n="stats.sortBy"></span>
                         <select id="stats-sort-key">${metricOptions}</select>
                     </label>
-                    <button id="stats-sort-dir" type="button" title="Sortierrichtung">▼</button>
+                    <button id="stats-sort-dir" type="button" data-i18n-attr="title:stats.sortDir">▼</button>
                 </div>
                 <div class="stats-scroll">
                     <table id="stats-table">
                         <thead><tr>
-                            <th>Name</th><th>Schaden verteilt</th><th>Schaden erlitten</th>
-                            <th>Distanz gelaufen</th><th>Kills</th><th>Überlebt</th>
+                            <th data-i18n="stats.col.name"></th><th data-i18n="stats.metric.damageDealt"></th><th data-i18n="stats.metric.damageTaken"></th>
+                            <th data-i18n="stats.metric.distanceMoved"></th><th data-i18n="stats.metric.kills"></th><th data-i18n="stats.col.survival"></th>
                         </tr></thead>
                         <tbody></tbody>
                     </table>
@@ -181,7 +198,7 @@ function createStatsPanel() {
 
             <div class="stats-pane" data-pane="bars" hidden>
                 <div class="stats-controls">
-                    <label>Kategorie:
+                    <label><span data-i18n="stats.category"></span>
                         <select id="stats-bar-key">${metricOptions}</select>
                     </label>
                 </div>
@@ -190,34 +207,35 @@ function createStatsPanel() {
 
             <div class="stats-pane" data-pane="heat" hidden>
                 <div class="stats-controls">
-                    <label>Anzeige:
+                    <label><span data-i18n="stats.display"></span>
                         <select id="stats-heat-layer">${layerOptions}</select>
                     </label>
-                    <label>Tribut:
+                    <label><span data-i18n="stats.tribute"></span>
                         <select id="stats-heat-tribute"></select>
                     </label>
-                    <label><input type="checkbox" id="stats-heat-bg" checked> Arena im Hintergrund</label>
-                    <label><input type="checkbox" id="stats-heat-deaths" checked> Todesorte markieren</label>
+                    <label><input type="checkbox" id="stats-heat-bg" checked> <span data-i18n="stats.heatBg"></span></label>
+                    <label><input type="checkbox" id="stats-heat-deaths" checked> <span data-i18n="stats.heatDeaths"></span></label>
                 </div>
                 <div class="stats-canvas-wrap"><canvas id="stats-heat-canvas"></canvas></div>
-                <div class="stats-legend"><span>wenig</span><i id="stats-heat-legend"></i><span>viel</span></div>
+                <div class="stats-legend"><span data-i18n="stats.low"></span><i id="stats-heat-legend"></i><span data-i18n="stats.high"></span></div>
             </div>
 
             <div class="stats-pane" data-pane="paths" hidden>
                 <div class="stats-controls">
-                    <button type="button" id="stats-path-all">Alle</button>
-                    <button type="button" id="stats-path-none">Keine</button>
-                    <label><input type="checkbox" id="stats-path-markers" checked> Start/Ende markieren</label>
+                    <button type="button" id="stats-path-all" data-i18n="stats.pathAll"></button>
+                    <button type="button" id="stats-path-none" data-i18n="stats.pathNone"></button>
+                    <button type="button" id="stats-path-alive" aria-pressed="false" data-i18n="stats.pathAliveOnly" data-i18n-attr="title:stats.pathAliveOnlyTitle"></button>
+                    <label><input type="checkbox" id="stats-path-markers" checked> <span data-i18n="stats.pathMarkers"></span></label>
                 </div>
                 <div id="stats-path-chips" class="path-chips"></div>
                 <div class="stats-controls stats-scrub">
-                    <label>Verlauf bis:
+                    <label><span data-i18n="stats.pathUntil"></span>
                         <input type="range" id="stats-path-tick" min="0" max="0" value="0">
                     </label>
                     <span id="stats-path-tick-label"></span>
                 </div>
                 <div class="stats-canvas-wrap"><canvas id="stats-path-canvas"></canvas></div>
-                <p class="stats-hint">Die Arena ist ohne Endspiel-Lava dargestellt. Die Linien sind halbtransparent: je kräftiger, desto öfter wurde der Weg begangen oder gekreuzt.</p>
+                <p class="stats-hint" data-i18n="stats.pathHint"></p>
             </div>
 
             <div class="stats-pane" data-pane="podium" hidden>
@@ -226,6 +244,7 @@ function createStatsPanel() {
         </div>
         <div id="stats-tip" class="stats-tip" hidden></div>
     `;
+    I18N.apply(container);
     statsEl('stats-heat-legend').style.background = `linear-gradient(90deg, ${HEAT_STOPS.map(s => `rgba(${s[1]}, ${s[2]}, ${s[3]}, ${Math.max(0.15, s[4] / 255)}) ${s[0] * 100}%`).join(', ')})`;
     statsEl('stats-sort-dir').dataset.dir = 'desc';
     try {
@@ -303,6 +322,13 @@ function bindStatsEvents(container) {
         statsView.chipSignature = '';
         renderStats();
     });
+    statsEl('stats-path-alive').addEventListener('click', function () {
+        statsView.pathAliveOnly = !statsView.pathAliveOnly;
+        this.classList.toggle('active', statsView.pathAliveOnly);
+        this.setAttribute('aria-pressed', String(statsView.pathAliveOnly));
+        statsView.chipSignature = '';
+        renderStats();
+    });
     statsEl('stats-path-markers').addEventListener('change', e => {
         statsView.pathMarkers = e.target.checked;
         renderStats();
@@ -322,7 +348,7 @@ function bindStatsEvents(container) {
 function applyStatsCollapsed() {
     statsEl('stats-body').hidden = statsView.collapsed;
     const btn = statsEl('stats-toggle');
-    btn.textContent = statsView.collapsed ? 'Einblenden' : 'Ausblenden';
+    btn.textContent = I18N.t(statsView.collapsed ? 'stats.show' : 'stats.hide');
     btn.setAttribute('aria-expanded', String(!statsView.collapsed));
     applyStatsTab();
 }
@@ -475,7 +501,7 @@ function onBarsHover(e) {
     const changed = statsView.barHover !== index;
     statsView.barHover = index;
     tip.hidden = false;
-    tip.innerHTML = `<b style="color:${row.tribute.color}">${escapeHtml(row.tribute.name)}</b><br>${metric.label}: ${row.value}<br>Platz ${index + 1} von ${statsView.barRows.length}`;
+    tip.innerHTML = `<b style="color:${row.tribute.color}">${escapeHtml(row.tribute.name)}</b><br>${metric.label}: ${row.value}<br>${I18N.t('stats.tipRank', { rank: index + 1, total: statsView.barRows.length })}`;
     tip.style.left = `${e.clientX + 14}px`;
     tip.style.top = `${e.clientY + 14}px`;
     if (changed) renderStatsBars();
@@ -488,7 +514,7 @@ function refreshTributeSelect(select, current) {
     const signature = tributes.map(t => `${t.id}:${t.name}`).join('|');
     if (select.dataset.signature === signature) return;
     select.dataset.signature = signature;
-    select.innerHTML = `<option value="all">Alle</option>` + tributes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+    select.innerHTML = `<option value="all">${I18N.t('common.all')}</option>` + tributes.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
     select.value = current;
     if (select.value !== current) select.value = 'all';
 }
@@ -546,7 +572,7 @@ function renderStatsHeat() {
     refreshTributeSelect(statsEl('stats-heat-tribute'), statsView.heatTribute);
     statsEl('stats-heat-tribute').disabled = statsView.heatLayer === 'deaths';
     if (!SimStats.hasData()) {
-        drawCanvasMessage(canvas, 'Noch keine Daten – starte die Simulation.');
+        drawCanvasMessage(canvas, I18N.t('stats.noData'));
         return;
     }
     const size = Math.min(760, Math.max(280, canvas.parentElement.clientWidth || 600));
@@ -587,7 +613,7 @@ function renderStatsHeat() {
         g.fillStyle = 'rgba(237, 233, 180, 0.85)';
         g.font = '500 15px "DM Sans", system-ui, sans-serif';
         g.textAlign = 'center';
-        g.fillText('Für diese Auswahl gibt es noch keine Daten.', size / 2, size / 2);
+        g.fillText(I18N.t('stats.noDataSelection'), size / 2, size / 2);
     }
 
     if (statsView.heatDeaths) {
@@ -618,9 +644,16 @@ function drawDeathCross(g, cx, cy, r, color) {
 // ---------------------------------------------------------------------
 // Laufpfade
 // ---------------------------------------------------------------------
-function buildPathChips() {
+// Lebte der Tribut zum Zeitpunkt tick noch? (Wer in diesem Zeitpunkt stirbt, zählt nicht mehr als lebend.)
+function isAliveAtTick(tribute, tick) {
+    const died = SimStats.getDeathTick(tribute.id);
+    return died === undefined || died > tick;
+}
+
+function buildPathChips(limit) {
     if (statsView.pathSelection === null) statsView.pathSelection = new Set(tributes.map(t => t.id));
-    const signature = tributes.map(t => `${t.id}:${t.name}:${t.color}`).join('|') + [...statsView.pathSelection].join(',');
+    const gone = new Set(statsView.pathAliveOnly && SimStats.hasData() ? tributes.filter(t => !isAliveAtTick(t, limit)).map(t => t.id) : []);
+    const signature = tributes.map(t => `${t.id}:${t.name}:${t.color}`).join('|') + [...statsView.pathSelection].join(',') + '#' + [...gone].join(',');
     if (signature === statsView.chipSignature) return;
     statsView.chipSignature = signature;
     const holder = statsEl('stats-path-chips');
@@ -628,7 +661,7 @@ function buildPathChips() {
     tributes.forEach(t => {
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = 'path-chip' + (statsView.pathSelection.has(t.id) ? ' on' : '');
+        chip.className = 'path-chip' + (statsView.pathSelection.has(t.id) ? ' on' : '') + (gone.has(t.id) ? ' gone' : '');
         chip.style.setProperty('--chip', t.color);
         chip.innerHTML = `<i></i>${escapeHtml(t.name)}`;
         chip.addEventListener('click', () => {
@@ -642,16 +675,16 @@ function buildPathChips() {
 }
 
 function renderStatsPaths() {
-    buildPathChips();
     const canvas = statsEl('stats-path-canvas');
     const slider = statsEl('stats-path-tick');
     const maxTick = SimStats.maxTick();
     slider.max = String(maxTick);
     const limit = statsView.pathTick === null ? maxTick : Math.min(statsView.pathTick, maxTick);
+    buildPathChips(limit);
     slider.value = String(limit);
-    statsEl('stats-path-tick-label').textContent = SimStats.hasData() ? `${formatGameTime(limit)} von ${maxTick}` : '';
+    statsEl('stats-path-tick-label').textContent = SimStats.hasData() ? I18N.t('stats.pathTime', { time: formatGameTime(limit), max: maxTick }) : '';
     if (!SimStats.hasData()) {
-        drawCanvasMessage(canvas, 'Noch keine Daten – starte die Simulation.');
+        drawCanvasMessage(canvas, I18N.t('stats.noData'));
         return;
     }
     const size = Math.min(760, Math.max(280, canvas.parentElement.clientWidth || 600));
@@ -665,7 +698,7 @@ function renderStatsPaths() {
     g.fillStyle = 'rgba(18, 7, 22, 0.22)';
     g.fillRect(0, 0, size, size);
 
-    const selected = tributes.filter(t => statsView.pathSelection.has(t.id));
+    const selected = tributes.filter(t => statsView.pathSelection.has(t.id) && (!statsView.pathAliveOnly || isAliveAtTick(t, limit)));
     // Halbtransparent und Strecke für Strecke: Überlagerungen werden kräftiger.
     // Gerade Läufe werden zu einer Linie zusammengefasst (schneller, gleiches Bild).
     g.lineCap = 'butt';
@@ -775,9 +808,9 @@ function buildPodiumPlaque(entry) {
     const plaque = document.createElement('div');
     plaque.className = 'podium-plaque';
     plaque.style.setProperty('--tribute', entry.tribute.color);
-    const kills = `${entry.kills} ${entry.kills === 1 ? 'Kill' : 'Kills'}`;
+    const kills = I18N.t('stats.kill', { n: entry.kills });
     let fate = '';
-    if (entry.survived) fate = '👑 Überlebt';
+    if (entry.survived) fate = `👑 ${I18N.t('stats.survived')}`;
     else if (entry.cause) fate = `☠️ ${escapeHtml(entry.cause)}`;
     plaque.innerHTML = `<b>${escapeHtml(entry.tribute.name)}</b><span>⚔️ ${kills}</span>${fate ? `<span>${fate}</span>` : ''}`;
     return plaque;
@@ -788,7 +821,7 @@ function renderStatsPodium() {
     if (!SimStats.isFinished()) {
         if (statsView.podiumSignature !== 'waiting') {
             statsView.podiumSignature = 'waiting';
-            holder.innerHTML = '<p class="stats-hint">Das Siegerpodest erscheint, sobald das Spiel beendet ist.</p>';
+            holder.innerHTML = `<p class="stats-hint">${I18N.t('stats.podiumWaiting')}</p>`;
         }
         return;
     }
@@ -813,8 +846,8 @@ function renderStatsPodium() {
         const step = document.createElement('div');
         step.className = 'podium-step';
         step.innerHTML = `<span class="podium-place">${place}</span>`;
-        if (members.length > 1) step.insertAdjacentHTML('beforeend', '<small class="podium-note">Geteilter Platz</small>');
-        if (!members.length) step.insertAdjacentHTML('beforeend', '<small class="podium-note">Platz durch Gleichstand vergeben</small>');
+        if (members.length > 1) step.insertAdjacentHTML('beforeend', `<small class="podium-note">${I18N.t('stats.podiumShared')}</small>`);
+        if (!members.length) step.insertAdjacentHTML('beforeend', `<small class="podium-note">${I18N.t('stats.podiumTie')}</small>`);
         members.forEach(m => step.appendChild(buildPodiumPlaque(m)));
 
         column.append(figures, step);
@@ -831,4 +864,15 @@ SimEvents.on('simEnd', () => {
     if (!statsView.ready) return;
     applyStatsTab();
     updateStatsTable();
+});
+
+// Sprachwechsel: Beschriftungen setzt I18N.apply, hier folgt nur, was per Script erzeugt wird
+I18N.onChange(() => {
+    if (!statsView.ready) return;
+    statsView.chipSignature = '';
+    statsView.podiumSignature = '';
+    const heatSelect = statsEl('stats-heat-tribute');
+    if (heatSelect) delete heatSelect.dataset.signature;
+    applyStatsCollapsed();
+    renderStats();
 });
